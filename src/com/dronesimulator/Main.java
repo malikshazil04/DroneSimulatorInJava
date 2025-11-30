@@ -1,6 +1,6 @@
 package com.dronesimulator;
 
-import Control.Simulator;
+import Core.*;
 import Core.Vector3;
 import Physics.Drone;
 
