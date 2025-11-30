@@ -13,7 +13,6 @@ public class Simulator {
 
     // These are the controller and simulation parameters
     private Controller controller;
-    private Vector3 target;
     private Vector3 gravity;
 
     // Constructor to set up controller and environment
