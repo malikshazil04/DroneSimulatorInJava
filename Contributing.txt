@@ -1,0 +1,19 @@
+How to contribute
+Fork the repository
+Create a new branch
+Make your changes
+Write clear commit messages
+Push to your fork
+Open a pull request
+
+What we accept
+Bug fixes
+Feature additions
+Code cleanup
+Documentation improvements
+
+Coding rules
+Keep classes small
+Keep functions simple
+Use readable names
+Test your code before sending a pull request
