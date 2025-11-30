@@ -1,0 +1,15 @@
+Community rules
+Be respectful
+Give clear feedback
+Stay focused on the project
+Do not spam
+
+Contributor behavior
+Explain ideas calmly
+Accept corrections
+Avoid personal comments
+
+Project behavior
+All pull requests are reviewed
+All issues are answered
+Violations lead to blocked access
