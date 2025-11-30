@@ -16,9 +16,8 @@ public class Simulator {
     private Vector3 gravity;
 
     // Constructor to set up controller and environment
-    public Simulator(Controller controller, Vector3 target, Vector3 gravity) {
+    public Simulator(Controller controller,  Vector3 gravity) {
         this.controller = controller;
-        this.target = target;
         this.gravity = gravity;
     }
 

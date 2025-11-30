@@ -9,10 +9,9 @@ public class Main {
     public static void main(String[] args) {
 
         Controller controller = new Controller();
-        Vector3 target = new Vector3(0, 0, 5);
         Vector3 gravity = new Vector3(0, 0, -9.81);
 
-        Simulator sim = new Simulator(controller, target, gravity);
+        Simulator sim = new Simulator(controller, gravity);
 
         Drone d1 = new Drone(0, new Vector3(0, 0, 1), 1.2 , new Vector3(1,1,5));
         sim.drones.add(d1);
