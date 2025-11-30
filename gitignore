@@ -1,0 +1,10 @@
+out
+target
+*.class
+*.log
+*.csv
+*.txt
+*.tmp
+.idea
+.vscode
+*.iml
