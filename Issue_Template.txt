@@ -1,0 +1,18 @@
+Issue type
+Bug
+Feature request
+Improvement
+
+Describe the issue
+Write the problem in simple words
+Explain expected behavior
+Explain actual behavior
+
+Steps to reproduce
+Write each step
+Add input values
+Add console output if needed
+
+Environment
+Operating system
+Java version
