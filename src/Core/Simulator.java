@@ -27,13 +27,13 @@ public class Simulator {
         for (int s = 0; s < steps; s++) {
             for (Drone d : drones) {
                 // Compute thrust for this drone
-                Vector3 thrust = controller.computeThrust(d, d.target, gravity);
+                Vector3 thrust = controller.computeThrust(d, d.getTarget(), gravity);
                 d.applyForce(thrust);
                 d.update(dt);
             }
             if (s % 20 == 0 && !drones.isEmpty()) {
                for (int i = 0; i < drones.size(); i++) {
-                    System.out.println("step " + s + " drone " + i + " " + drones.get(i).position);
+                    System.out.println("step " + s + " drone " + i + " " + drones.get(i).getPosition());
                }
             }
         }

@@ -13,13 +13,13 @@ public class Main {
 
         Simulator sim = new Simulator(controller, gravity);
 
-        Drone d1 = new Drone(0, new Vector3(0, 0, 1), 1.2 , new Vector3(1,1,5));
+        Drone d1 = new Drone(new Vector3(0, 0, 1), 1.2 , new Vector3(1,1,5));
         sim.drones.add(d1);
 
-        Drone d2 = new Drone(1, new Vector3(1, 0, 1), 1.2 , new Vector3(1,3,4));
+        Drone d2 = new Drone(new Vector3(1, 0, 1), 1.2 , new Vector3(1,3,4));
         sim.drones.add(d2);
 
-        Drone d3 = new Drone(2, new Vector3(1, 1, 1), 1.3 , new Vector3(5,5,4.5));
+        Drone d3 = new Drone(new Vector3(1, 1, 1), 1.3 , new Vector3(5,5,4.5));
         sim.drones.add(d3);
 
         sim.run();
