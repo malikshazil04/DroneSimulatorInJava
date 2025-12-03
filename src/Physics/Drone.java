@@ -88,11 +88,11 @@ public void setTarget(Vector3 t) {
 }
 
 public void applyForce(Vector3 force) {
-if (force == null) {
-throw new IllegalArgumentException("force cannot be null");
+    if (force == null) {
+        throw new IllegalArgumentException("force cannot be null");
 }
-Vector3 a = force.scale(1.0 / mass);
-this.acceleration = this.acceleration.add(a);
+    Vector3 a = force.scale(1.0 / mass);
+    this.acceleration = this.acceleration.add(a);
 }
 
 public void update(double dt) {

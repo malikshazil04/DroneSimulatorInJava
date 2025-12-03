@@ -1,42 +1,48 @@
 package Core;
-
 import java.util.ArrayList;
 import java.util.List;
-import Physics.*;
-import Control.*;
+import Physics.Drone;
+import Control.Controller;
 
 public class Simulator {
+private double dt;
+private double totalTime;
+private List<Drone> drones;
+private Vector3 gravity;
+private Controller controller;
 
-    public double dt = 0.05;
-    public double totalTime = 10.0;
-    public List<Drone> drones = new ArrayList<>();
+public Simulator(Controller controller) {
+    this.dt = 0.05;
+    this.totalTime = 10.0;
+    this.gravity = new Vector3(0, 0, -9.81);
+    this.drones = new ArrayList<>();
+    this.controller = controller;
+}
 
-    // These are the controller and simulation parameters
-    private Controller controller;
-    private Vector3 gravity;
-
-    // Constructor to set up controller and environment
-    public Simulator(Controller controller,  Vector3 gravity) {
-        this.controller = controller;
-        this.gravity = gravity;
+public void addDrone(Drone d){
+    if (d == null) {
+        throw new IllegalArgumentException("drone cannot be null");
     }
+    this.drones.add(d);
+}
 
-    public void run() {
-        int steps = (int)(totalTime / dt);
+public void run() {
+    int steps = (int)(totalTime / dt);
 
-        for (int s = 0; s < steps; s++) {
-            for (Drone d : drones) {
-                // Compute thrust for this drone
-                Vector3 thrust = controller.computeThrust(d, d.getTarget(), gravity);
-                d.applyForce(thrust);
-                d.update(dt);
-            }
-            if (s % 20 == 0 && !drones.isEmpty()) {
-               for (int i = 0; i < drones.size(); i++) {
-                    System.out.println("step " + s + " drone " + i + " " + drones.get(i).getPosition());
-               }
+    for (int s = 0; s < steps; s++) {
+
+        for (Drone d : drones) {
+            Vector3 thrust = controller.computeThrust(d, d.getTarget(), gravity);
+            d.applyForce(thrust);
+            d.update(dt);
+        }
+
+        if (s % 20 == 0 && !drones.isEmpty()) {
+            for (int i = 0; i < drones.size(); i++) {
+                System.out.println("Step " + s + " Drone " + i);
+                drones.get(i).display();
             }
         }
     }
 }
-
+}
