@@ -11,6 +11,7 @@ private List<Drone> drones;
 private Vector3 gravity;
 private Controller controller;
 private FormationManager formationManager;
+private CollisionAvoidance collisionAvoidance;
 
 public Simulator(Controller controller){
     this.dt = 0.05;
@@ -19,6 +20,7 @@ public Simulator(Controller controller){
     this.drones = new ArrayList<>();
     this.controller = controller;
     this.formationManager = new FormationManager(0.2, 0.1, 3.0);
+    this.collisionAvoidance = new CollisionAvoidance(2.0, 0.8);
 }
 
 public void addDrone(Drone d){
@@ -83,6 +85,10 @@ public FormationManager getFormationManager() {
     return this.formationManager;
 }
 
+public CollisionAvoidance getCollisionAvoidance() {
+    return this.collisionAvoidance;
+}
+
 public List<Drone> getDrones() {
     return this.drones;
 }
@@ -92,13 +98,19 @@ public void run() {
 
     for (int s = 0; s < steps; s++) {
 
-        for (Drone d : drones) {
-            Vector3 formationF = formationManager.computeFormationForce(d, drones);
-            d.applyForce(formationF);
-            Vector3 thrust = controller.computeThrust(d, d.getTarget(), gravity);
-            d.applyForce(thrust);
-            d.update(dt);
-        }
+for (Drone d : drones) {
+
+    Vector3 avoidF = collisionAvoidance.computeAvoidanceForce(d, drones);
+    d.applyForce(avoidF);
+
+    Vector3 formationF = formationManager.computeFormationForce(d, drones);
+    d.applyForce(formationF);
+
+    Vector3 thrust = controller.computeThrust(d, d.getTarget(), gravity);
+    d.applyForce(thrust);
+
+    d.update(dt);
+}
 
         if (s % 20 == 0 && !drones.isEmpty()) {
             for (int i = 0; i < drones.size(); i++) {
