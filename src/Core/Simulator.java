@@ -12,6 +12,7 @@ private Vector3 gravity;
 private Controller controller;
 private FormationManager formationManager;
 private CollisionAvoidance collisionAvoidance;
+private CommunicationModule communication;
 
 public Simulator(Controller controller){
     this.dt = 0.05;
@@ -21,6 +22,7 @@ public Simulator(Controller controller){
     this.controller = controller;
     this.formationManager = new FormationManager(0.2, 0.1, 3.0);
     this.collisionAvoidance = new CollisionAvoidance(2.0, 0.8);
+    this.communication = new CommunicationModule();
 }
 
 public void addDrone(Drone d){
@@ -89,35 +91,50 @@ public CollisionAvoidance getCollisionAvoidance() {
     return this.collisionAvoidance;
 }
 
+public CommunicationModule getCommunication() {
+    return this.communication;
+}
+
 public List<Drone> getDrones() {
     return this.drones;
 }
 
 public void run() {
-    int steps = (int)(totalTime / dt);
+int steps = (int)(totalTime / dt);
 
-    for (int s = 0; s < steps; s++) {
+for (int s = 0; s < steps; s++) {
 
-for (Drone d : drones) {
+    if (s % 50 == 0) {
+        communication.sendMessage("status update tick " + s);
+    }
 
-    Vector3 avoidF = collisionAvoidance.computeAvoidanceForce(d, drones);
-    d.applyForce(avoidF);
+    for (Drone d : drones) {
 
-    Vector3 formationF = formationManager.computeFormationForce(d, drones);
-    d.applyForce(formationF);
+        String msg = communication.readMessage();
+        if (msg != null && !msg.isEmpty()) {
+            d.applyForce(new Vector3(0, 0, 0));
+        }
 
-    Vector3 thrust = controller.computeThrust(d, d.getTarget(), gravity);
-    d.applyForce(thrust);
+        Vector3 avoidF = collisionAvoidance.computeAvoidanceForce(d, drones);
+        d.applyForce(avoidF);
 
-    d.update(dt);
-}
+        Vector3 formationF = formationManager.computeFormationForce(d, drones);
+        d.applyForce(formationF);
 
-        if (s % 20 == 0 && !drones.isEmpty()) {
-            for (int i = 0; i < drones.size(); i++) {
-                System.out.println("Step " + s + " Drone " + i);
-                drones.get(i).display();
-            }
+        Vector3 thrust = controller.computeThrust(d, d.getTarget(), gravity);
+        d.applyForce(thrust);
+
+        d.update(dt);
+    }
+
+    if (s % 20 == 0 && !drones.isEmpty()) {
+        for (int i = 0; i < drones.size(); i++) {
+            System.out.println("Step " + s + " Drone " + i);
+            drones.get(i).display();
         }
     }
+}
+
+
 }
 }
