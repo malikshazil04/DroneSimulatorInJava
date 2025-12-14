@@ -13,6 +13,7 @@ private Controller controller;
 private FormationManager formationManager;
 private CollisionAvoidance collisionAvoidance;
 private CommunicationModule communication;
+private Logger logger;
 
 public Simulator(Controller controller){
     this.dt = 0.05;
@@ -23,6 +24,7 @@ public Simulator(Controller controller){
     this.formationManager = new FormationManager(0.2, 0.1, 3.0);
     this.collisionAvoidance = new CollisionAvoidance(2.0, 0.8);
     this.communication = new CommunicationModule();
+    this.logger = new Logger();
 }
 
 public void addDrone(Drone d){
@@ -98,14 +100,19 @@ public CommunicationModule getCommunication() {
 public List<Drone> getDrones() {
     return this.drones;
 }
+public Logger getLogger() {
+    return this.logger;
+}
 
 public void run() {
 int steps = (int)(totalTime / dt);
+logger.log("simulation started");
 
 for (int s = 0; s < steps; s++) {
-
+    
     if (s % 50 == 0) {
         communication.sendMessage("status update tick " + s);
+        logger.log("step " + s);
     }
 
     for (Drone d : drones) {
@@ -134,7 +141,7 @@ for (int s = 0; s < steps; s++) {
         }
     }
 }
-
+logger.log("simulation ended");
 
 }
 }
