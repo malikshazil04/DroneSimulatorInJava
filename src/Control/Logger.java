@@ -5,11 +5,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 
 public class Logger {
-
 private FileWriter writer;
-
 public Logger() {
-
     JFileChooser chooser = new JFileChooser();
     chooser.setDialogTitle("Select directory to save log file");
     chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);

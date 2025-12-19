@@ -1,7 +1,7 @@
 package Core;
 import java.util.ArrayList;
 import java.util.List;
-import Physics.Drone;
+import physics.Drone;
 import Control.*;
 
 public class Simulator {
@@ -14,17 +14,24 @@ private FormationManager formationManager;
 private CollisionAvoidance collisionAvoidance;
 private CommunicationModule communication;
 private Logger logger;
+private List<Obstacle> obstacles;
+private ObstacleManager obstacleManager;
+private Config config;
+private CSVExporter csvExporter;
 
-public Simulator(Controller controller){
-    this.dt = 0.05;
-    this.totalTime = 10.0;
-    this.gravity = new Vector3(0, 0, -9.81);
+public Simulator(Controller controller, Config config){
+    this.dt = config.dt;
+    this.totalTime = config.totalTime;
+    this.gravity = config.gravity;
     this.drones = new ArrayList<>();
     this.controller = controller;
-    this.formationManager = new FormationManager(0.2, 0.1, 3.0);
-    this.collisionAvoidance = new CollisionAvoidance(2.0, 0.8);
+    this.formationManager =new FormationManager(config.formationKPos,config.formationKVel,config.formationSpacing);
+    this.collisionAvoidance =new CollisionAvoidance(config.collisionSafeDistance,config.collisionStrength);
     this.communication = new CommunicationModule();
     this.logger = new Logger();
+    this.obstacles = new ArrayList<>();
+    this.obstacleManager =new ObstacleManager(config.obstacleStrength);
+    this.csvExporter = new CSVExporter("output.csv");
 }
 
 public void addDrone(Drone d){
@@ -103,6 +110,12 @@ public List<Drone> getDrones() {
 public Logger getLogger() {
     return this.logger;
 }
+public List<Obstacle> getObstacles() {
+    return obstacles;
+}
+public CSVExporter getCsvExporter() {
+    return csvExporter;
+}
 
 public void run() {
 int steps = (int)(totalTime / dt);
@@ -116,11 +129,13 @@ for (int s = 0; s < steps; s++) {
     }
 
     for (Drone d : drones) {
-
         String msg = communication.readMessage();
         if (msg != null && !msg.isEmpty()) {
             d.applyForce(new Vector3(0, 0, 0));
         }
+
+        Vector3 obsF = obstacleManager.computeObstacleForce(d, obstacles);
+        d.applyForce(obsF);
 
         Vector3 avoidF = collisionAvoidance.computeAvoidanceForce(d, drones);
         d.applyForce(avoidF);
@@ -132,6 +147,8 @@ for (int s = 0; s < steps; s++) {
         d.applyForce(thrust);
 
         d.update(dt);
+
+        csvExporter.writeRow(s,d.getId(),d.getPosition());
     }
 
     if (s % 20 == 0 && !drones.isEmpty()) {

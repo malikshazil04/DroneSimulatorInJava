@@ -1,7 +1,7 @@
 package Control;
 import java.util.List;
 import Core.Vector3;
-import Physics.Drone;
+import physics.Drone;
 
 public class CollisionAvoidance {
 

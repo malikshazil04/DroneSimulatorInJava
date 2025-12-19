@@ -1,5 +1,5 @@
 package Control;
-import Physics.*;
+import physics.*;
 import Core.*;
 
 public class Controller {
