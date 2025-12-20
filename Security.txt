@@ -1,7 +1,0 @@
-Security contact
-Write your email here for reports
-
-Reporting
-If you find a security issue
-Do not open a public issue
-Send a private message through the contact email
