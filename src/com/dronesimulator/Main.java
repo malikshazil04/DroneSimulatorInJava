@@ -1,8 +1,8 @@
 package com.dronesimulator;
 
+import Core.Obstacle;
 import Core.Simulator;
 import Core.Vector3;
-import Core.Obstacle;
 import Core.Config;
 import physics.Drone;
 import Control.Controller;
@@ -14,7 +14,7 @@ public class Main {
         Controller controller = new Controller();
         Config config = new Config();
         config.loadFromFile("config.txt");
-        Simulator sim = new Simulator(controller, config);
+        Simulator sim = new Simulator(controller, config, new java.io.File("logs"));
 
         sim.getFormationManager().setSpacing(3.0);
         sim.getCollisionAvoidance().setSafeDistance(2.0);
@@ -49,7 +49,6 @@ public class Main {
         sim.addDrone(d4);
         sim.addDrone(d5);
         sim.addDrone(d6);
-
         Obstacle obs1 = new Obstacle(
                 new Vector3(5, 0, 2),
                 2.0);

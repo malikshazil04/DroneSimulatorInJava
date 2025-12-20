@@ -3,29 +3,18 @@ package Core;
 import java.util.ArrayList;
 import java.util.List;
 
-import Control.CSVExporter;
-import Control.CollisionAvoidance;
-import Control.CommunicationModule;
-import Control.Controller;
-import Control.FormationManager;
-import Control.Logger;
-import Control.ObstacleManager;
+import Control.*;
 import physics.Drone;
 
 public class Simulator {
 
     private double dt;
     private double totalTime;
-
     private List<Drone> drones;
-    private List<Obstacle> obstacles;
-
     private Vector3 gravity;
-
     private Controller controller;
     private FormationManager formationManager;
     private CollisionAvoidance collisionAvoidance;
-    private ObstacleManager obstacleManager;
     private CommunicationModule communication;
     private boolean running = false;
     private boolean paused = false;
@@ -34,11 +23,13 @@ public class Simulator {
     private Logger logger;
     private CSVExporter csvExporter;
     private Config config;
-    private double areaWidth = 60.0;
-    private double areaLength = 60.0;
+    private double areaWidth = 120.0;
+    private double areaLength = 120.0;
     private double wallBounce = 0.6;
+    private ObstacleManager obstacleManager;
+    public List<Obstacle> obstacles;
 
-    public Simulator(Controller controller, Config config) {
+    public Simulator(Controller controller, Config config, java.io.File outputDir) {
 
         if (controller == null) {
             throw new IllegalArgumentException("controller cannot be null");
@@ -54,43 +45,72 @@ public class Simulator {
         this.gravity = config.gravity;
 
         this.drones = new ArrayList<>();
-        this.obstacles = new ArrayList<>();
 
         this.controller = controller;
 
         this.formationManager = new FormationManager(
                 config.formationKPos,
                 config.formationKVel,
-                config.formationSpacing
-        );
+                config.formationSpacing);
+        this.formationManager.setCommRange(config.commRange);
 
         this.collisionAvoidance = new CollisionAvoidance(
                 config.collisionSafeDistance,
-                config.collisionStrength
-        );
-
-        this.obstacleManager = new ObstacleManager(config.obstacleStrength);
-
+                config.collisionStrength);
         this.communication = new CommunicationModule(config.commRange, config.pLoss);
 
-        this.logger = new Logger();
+        this.logger = new Logger(outputDir);
         this.csvExporter = new CSVExporter(logger.getDirectory());
+        this.obstacleManager = new ObstacleManager(config.obstacleStrength);
+        obstacles = new ArrayList<>();
     }
-    public double getAreaWidth() { return areaWidth; }
-    public double getAreaLength() { return areaLength; }
+
+    public double getDt() {
+        return dt;
+    }
+
+    public ObstacleManager getObstacleManager() {
+        return obstacleManager;
+    }
+
+    public void setObstacleManager(ObstacleManager obstacleManager) {
+        this.obstacleManager = obstacleManager;
+    }
+
+    public List<Obstacle> getObstacles() {
+        return obstacles;
+    }
+
+    public void setObstacles(List<Obstacle> obstacles) {
+        this.obstacles = obstacles;
+    }
+
+    public double getAreaWidth() {
+        return areaWidth;
+    }
+
+    public double getAreaLength() {
+        return areaLength;
+    }
 
     public void setAreaWidth(double w) {
-        if (w <= 0) throw new IllegalArgumentException("areaWidth must be > 0");
+        if (w <= 0)
+            throw new IllegalArgumentException("areaWidth must be > 0");
         this.areaWidth = w;
     }
+
     public void setAreaLength(double l) {
-        if (l <= 0) throw new IllegalArgumentException("areaLength must be > 0");
+        if (l <= 0)
+            throw new IllegalArgumentException("areaLength must be > 0");
         this.areaLength = l;
     }
+
     public void setWallBounce(double b) {
-        if (b < 0 || b > 1) throw new IllegalArgumentException("wallBounce must be 0..1");
+        if (b < 0 || b > 1)
+            throw new IllegalArgumentException("wallBounce must be 0..1");
         this.wallBounce = b;
     }
+
     private void enforceBoundaryBounce(Drone d) {
         double halfW = areaWidth / 2.0;
         double halfL = areaLength / 2.0;
@@ -103,11 +123,25 @@ public class Simulator {
 
         boolean hit = false;
 
-        if (x < -halfW) { x = -halfW; vx = Math.abs(vx) * wallBounce; hit = true; }
-        else if (x > halfW) { x = halfW; vx = -Math.abs(vx) * wallBounce; hit = true; }
+        if (x < -halfW) {
+            x = -halfW;
+            vx = Math.abs(vx) * wallBounce;
+            hit = true;
+        } else if (x > halfW) {
+            x = halfW;
+            vx = -Math.abs(vx) * wallBounce;
+            hit = true;
+        }
 
-        if (y < -halfL) { y = -halfL; vy = Math.abs(vy) * wallBounce; hit = true; }
-        else if (y > halfL) { y = halfL; vy = -Math.abs(vy) * wallBounce; hit = true; }
+        if (y < -halfL) {
+            y = -halfL;
+            vy = Math.abs(vy) * wallBounce;
+            hit = true;
+        } else if (y > halfL) {
+            y = halfL;
+            vy = -Math.abs(vy) * wallBounce;
+            hit = true;
+        }
 
         if (hit) {
             d.setPosition(new Vector3(x, y, z));
@@ -115,18 +149,22 @@ public class Simulator {
         }
     }
 
-
     public void addDrone(Drone d) {
-        if (d == null) throw new IllegalArgumentException("drone cannot be null");
+        if (d == null)
+            throw new IllegalArgumentException("drone cannot be null");
+        d.setMaxSpeed(config.maxSpeed);
         drones.add(d);
+    }
+
+    public void setMaxSpeed(double s) {
+        config.maxSpeed = s;
+        for (Drone d : drones) {
+            d.setMaxSpeed(s);
+        }
     }
 
     public List<Drone> getDrones() {
         return drones;
-    }
-
-    public List<Obstacle> getObstacles() {
-        return obstacles;
     }
 
     public FormationManager getFormationManager() {
@@ -145,7 +183,7 @@ public class Simulator {
         return logger;
     }
 
-    private int computeCollisionCount() {
+    public int computeCollisionCount() {
         int count = 0;
 
         for (int i = 0; i < drones.size(); i++) {
@@ -159,8 +197,9 @@ public class Simulator {
         return count;
     }
 
-    private double computeAverageSpacing() {
-        if (drones.size() < 2) return 0.0;
+    public double computeAverageSpacing() {
+        if (drones.size() < 2)
+            return 0.0;
 
         double sum = 0.0;
         int pairs = 0;
@@ -172,12 +211,25 @@ public class Simulator {
             }
         }
 
-        return sum / pairs;
+        return pairs == 0 ? 0.0 : sum / pairs;
+    }
+
+    public double getCollisionPercentage() {
+        int totalPairs = (drones.size() * (drones.size() - 1)) / 2;
+        if (totalPairs == 0)
+            return 0.0;
+        return ((double) computeCollisionCount() / totalPairs) * 100.0;
+    }
+
+    public double getElapsedTime() {
+        return currentStep * dt;
     }
 
     public void startSim() {
-        if (dt <= 0) throw new IllegalStateException("dt must be > 0");
-        if (totalTime <= 0) throw new IllegalStateException("totalTime must be > 0");
+        if (dt <= 0)
+            throw new IllegalStateException("dt must be > 0");
+        if (totalTime <= 0)
+            throw new IllegalStateException("totalTime must be > 0");
 
         running = true;
         paused = false;
@@ -199,10 +251,6 @@ public class Simulator {
         logger.log("Simulation resumed");
     }
 
-    public ObstacleManager getObstacleManager() {
-        return obstacleManager;
-    }
-
     public Config getConfig() {
         return config;
     }
@@ -215,20 +263,25 @@ public class Simulator {
             finalizeSimulation();
         }
     }
+
     public Controller getController() {
         return controller;
     }
 
     public void setDt(double dt) {
-        if (dt <= 0) throw new IllegalArgumentException("dt must be > 0");
+        if (dt <= 0)
+            throw new IllegalArgumentException("dt must be > 0");
         this.dt = dt;
-        if (running) totalSteps = (int) Math.ceil(totalTime / dt);
+        if (running)
+            totalSteps = (int) Math.ceil(totalTime / dt);
     }
 
     public void setTotalTime(double totalTime) {
-        if (totalTime <= 0) throw new IllegalArgumentException("totalTime must be > 0");
+        if (totalTime <= 0)
+            throw new IllegalArgumentException("totalTime must be > 0");
         this.totalTime = totalTime;
-        if (running) totalSteps = (int) Math.ceil(totalTime / dt);
+        if (running)
+            totalSteps = (int) Math.ceil(totalTime / dt);
     }
 
     public boolean isRunning() {
@@ -257,7 +310,6 @@ public class Simulator {
             d.resetAcceleration();
             Vector3 obsF = obstacleManager.computeObstacleForce(d, obstacles);
             d.applyForce(obsF);
-
             // collision avoidance
             Vector3 avoidF = collisionAvoidance.computeAvoidanceForce(d, drones);
             d.applyForce(avoidF);
@@ -273,13 +325,16 @@ public class Simulator {
             // controller thrust
             Vector3 thrust = controller.computeThrust(d, d.getTarget(), gravity);
             d.applyForce(thrust);
+
+            // applying torque
             d.applyTorque(controller.computeTorque(d));
 
             // integrate
             d.update(dt);
             enforceBoundaryBounce(d);
 
-            csvExporter.writeRow(currentStep, d, thrust.z);
+            double thrustBodyZ = d.getRotation().transpose().multiply(thrust).z;
+            csvExporter.writeRow(currentStep, d, thrustBodyZ);
         }
         if (config.logEvery > 0 && currentStep % config.logEvery == 0) {
             logger.log("step " + currentStep);
@@ -289,9 +344,27 @@ public class Simulator {
         if (currentStep >= totalSteps) {
             running = false;
             finalizeSimulation();
+        } else if (checkAllDronesFinished()) {
+            logger.log("All drones reached target! Stopping simulation.");
+            stopSim();
         }
-
     }
+
+    private boolean checkAllDronesFinished() {
+        if (drones.isEmpty())
+            return false;
+        for (Drone d : drones) {
+            if (d.getPosition().distance(d.getTarget()) > 1.0) {
+                return false;
+            }
+            // Also check if valid velocity is low enough (settled)
+            if (d.getVelocity().magnitude() > 0.1) {
+                return false;
+            }
+        }
+        return true;
+    }
+
     private void finalizeSimulation() {
 
         int collisions = computeCollisionCount();

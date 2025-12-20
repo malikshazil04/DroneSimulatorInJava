@@ -1,7 +1,7 @@
 package Control;
+
 import Core.Config;
 
-import javax.swing.JFileChooser;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -10,15 +10,12 @@ public class Logger {
     private final File directory;
     private final FileWriter logWriter;
     private final FileWriter metricsWriter;
-    public Logger() {
-        JFileChooser chooser = new JFileChooser();
-        chooser.setDialogTitle("Select folder to save output files");
-        chooser.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
-        int result = chooser.showSaveDialog(null);
-        if (result != JFileChooser.APPROVE_OPTION) {
-            throw new RuntimeException("No directory selected");
+
+    public Logger(File directory) {
+        if (directory == null) {
+            throw new IllegalArgumentException("directory cannot be null");
         }
-        directory = chooser.getSelectedFile();
+        this.directory = directory;
         if (!directory.exists()) {
             directory.mkdirs();
         }
@@ -29,12 +26,14 @@ public class Logger {
             throw new RuntimeException("Cannot create output files");
         }
     }
+
     public File getDirectory() {
         return directory;
     }
 
     public void log(String message) {
-        if (message == null) return;
+        if (message == null)
+            return;
 
         System.out.println(message);
 
@@ -47,7 +46,8 @@ public class Logger {
     }
 
     public void writeMetric(String line) {
-        if (line == null) return;
+        if (line == null)
+            return;
 
         try {
             metricsWriter.write(line + "\n");
@@ -56,6 +56,7 @@ public class Logger {
             System.out.println("metrics write failed");
         }
     }
+
     public void writeParameters(Config config) {
         writeMetric("        PARAMETERS USED       ");
         writeMetric("dt=" + config.dt);
@@ -66,10 +67,13 @@ public class Logger {
         writeMetric("formationSpacing=" + config.formationSpacing);
         writeMetric("collisionSafeDistance=" + config.collisionSafeDistance);
     }
+
     public void close() {
         try {
-            if (logWriter != null) logWriter.close();
-            if (metricsWriter != null) metricsWriter.close();
+            if (logWriter != null)
+                logWriter.close();
+            if (metricsWriter != null)
+                metricsWriter.close();
         } catch (IOException e) {
             System.out.println("logger close failed");
         }

@@ -17,6 +17,7 @@ public class Config {
     public double commRange;
     public double pLoss;
     public int logEvery;
+    public double maxSpeed;
 
     public Config() {
 
@@ -37,6 +38,7 @@ public class Config {
         commRange = 0.0;
         pLoss = 0;
         logEvery = 0;
+        maxSpeed = 20.0;
     }
 
     public void loadFromFile(String fileName) {
@@ -116,6 +118,9 @@ public class Config {
                         break;
                     case "logEvery":
                         logEvery = (int) value;
+                        break;
+                    case "maxSpeed":
+                        maxSpeed = value;
                         break;
                 }
             }

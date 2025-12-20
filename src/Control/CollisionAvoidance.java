@@ -40,30 +40,18 @@ public void setStrength(double s) {
 public Vector3 computeAvoidanceForce(Drone d, List<Drone> all) {
 
     Vector3 total = new Vector3(0, 0, 0);
-
     for (Drone other : all) {
-
-        if (other.getId() == d.getId()) {
-            continue;
-        }
+        if (other == d) continue;
 
         double dist = d.getPosition().distance(other.getPosition());
+        if (dist < 1e-9) continue;
 
-        if (dist >= safeDistance) {
-            continue;
+        if (dist < safeDistance) {
+            Vector3 dir = d.getPosition().sub(other.getPosition()).normalize();
+            double mag = (safeDistance - dist) * strength;
+            total = total.add(dir.scale(mag));
         }
-
-        Vector3 direction = d.getPosition().sub(other.getPosition());
-
-        double scale = (safeDistance - dist) * strength;
-
-        Vector3 repulsion = direction.normalize().scale(scale);
-
-        total = total.add(repulsion);
     }
-
     return total;
 }
-
-
 }

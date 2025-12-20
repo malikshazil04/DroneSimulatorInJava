@@ -105,6 +105,11 @@ public class Matrix3 {
         R.m[0][2]=c2.x; R.m[1][2]=c2.y; R.m[2][2]=c2.z;
         return R;
     }
+    public Matrix3 transpose() {
+        double[][] t = new double[3][3];
+        for (int i=0;i<3;i++) for (int j=0;j<3;j++) t[i][j] = m[j][i];
+        return new Matrix3(t);
+    }
     public Vector3 multiply(Vector3 v) {
         if (v == null) throw new IllegalArgumentException("vector cannot be null");
 

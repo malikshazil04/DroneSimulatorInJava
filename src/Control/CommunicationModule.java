@@ -1,4 +1,5 @@
 package Control;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import physics.Drone;
@@ -24,7 +25,20 @@ public class CommunicationModule {
         this.lastMessage = "";
         this.random = new Random();
     }
+    public boolean canShareState(physics.Drone a, physics.Drone b) {
+        double dist = a.getPosition().distance(b.getPosition());
 
+        // distance constraint: ||pi - pj|| < R
+        if (dist >= commRange) return false;
+
+        attempts++;
+
+        // stochastic success: rand() > pLoss
+        boolean ok = Math.random() > pLoss;
+        if (ok) successes++;
+
+        return ok;
+    }
     public void exchangeStates(List<Drone> drones) {
 
         for (int i = 0; i < drones.size(); i++) {
