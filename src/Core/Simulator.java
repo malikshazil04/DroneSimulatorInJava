@@ -29,14 +29,14 @@ public class Simulator {
     private CommunicationModule communication;
     private boolean running = false;
     private boolean paused = false;
-
     private int currentStep = 0;
     private int totalSteps = 0;
-
     private Logger logger;
     private CSVExporter csvExporter;
-
     private Config config;
+    private double areaWidth = 60.0;
+    private double areaLength = 60.0;
+    private double wallBounce = 0.6;
 
     public Simulator(Controller controller, Config config) {
 
@@ -76,6 +76,45 @@ public class Simulator {
         this.logger = new Logger();
         this.csvExporter = new CSVExporter(logger.getDirectory());
     }
+    public double getAreaWidth() { return areaWidth; }
+    public double getAreaLength() { return areaLength; }
+
+    public void setAreaWidth(double w) {
+        if (w <= 0) throw new IllegalArgumentException("areaWidth must be > 0");
+        this.areaWidth = w;
+    }
+    public void setAreaLength(double l) {
+        if (l <= 0) throw new IllegalArgumentException("areaLength must be > 0");
+        this.areaLength = l;
+    }
+    public void setWallBounce(double b) {
+        if (b < 0 || b > 1) throw new IllegalArgumentException("wallBounce must be 0..1");
+        this.wallBounce = b;
+    }
+    private void enforceBoundaryBounce(Drone d) {
+        double halfW = areaWidth / 2.0;
+        double halfL = areaLength / 2.0;
+
+        Vector3 p = d.getPosition();
+        Vector3 v = d.getVelocity();
+
+        double x = p.x, y = p.y, z = p.z;
+        double vx = v.x, vy = v.y, vz = v.z;
+
+        boolean hit = false;
+
+        if (x < -halfW) { x = -halfW; vx = Math.abs(vx) * wallBounce; hit = true; }
+        else if (x > halfW) { x = halfW; vx = -Math.abs(vx) * wallBounce; hit = true; }
+
+        if (y < -halfL) { y = -halfL; vy = Math.abs(vy) * wallBounce; hit = true; }
+        else if (y > halfL) { y = halfL; vy = -Math.abs(vy) * wallBounce; hit = true; }
+
+        if (hit) {
+            d.setPosition(new Vector3(x, y, z));
+            d.setVelocity(new Vector3(vx, vy, vz));
+        }
+    }
+
 
     public void addDrone(Drone d) {
         if (d == null) throw new IllegalArgumentException("drone cannot be null");
@@ -160,8 +199,12 @@ public class Simulator {
         logger.log("Simulation resumed");
     }
 
-    public void setTotalTime(double totalTime) {
-        this.totalTime = totalTime;
+    public ObstacleManager getObstacleManager() {
+        return obstacleManager;
+    }
+
+    public Config getConfig() {
+        return config;
     }
 
     public void stopSim() {
@@ -172,9 +215,20 @@ public class Simulator {
             finalizeSimulation();
         }
     }
+    public Controller getController() {
+        return controller;
+    }
 
     public void setDt(double dt) {
+        if (dt <= 0) throw new IllegalArgumentException("dt must be > 0");
         this.dt = dt;
+        if (running) totalSteps = (int) Math.ceil(totalTime / dt);
+    }
+
+    public void setTotalTime(double totalTime) {
+        if (totalTime <= 0) throw new IllegalArgumentException("totalTime must be > 0");
+        this.totalTime = totalTime;
+        if (running) totalSteps = (int) Math.ceil(totalTime / dt);
     }
 
     public boolean isRunning() {
@@ -219,9 +273,11 @@ public class Simulator {
             // controller thrust
             Vector3 thrust = controller.computeThrust(d, d.getTarget(), gravity);
             d.applyForce(thrust);
+            d.applyTorque(controller.computeTorque(d));
 
             // integrate
             d.update(dt);
+            enforceBoundaryBounce(d);
 
             csvExporter.writeRow(currentStep, d, thrust.z);
         }

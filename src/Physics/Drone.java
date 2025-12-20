@@ -9,14 +9,24 @@ private Vector3 velocity;
 private Vector3 acceleration;
 private double mass;
 private Vector3 target;
+    // -------- rotational state (NEW) --------
+    private Matrix3 rotation;     // R
+    private Vector3 omega;        // ω  (rad/s)
+    private Vector3 alpha;     // ω̇ (rad/s^2)
+    private double inertia;
 
-public Drone() {
+
+    public Drone() {
     this.id = nextId++;
     this.position = new Vector3(0,0,0);
     this.velocity = new Vector3(0,0,0);
     this.acceleration = new Vector3(0,0,0);
     this.mass = 1.0;
     this.target = new Vector3(0,0,0);
+    this.rotation = Matrix3.identity();
+    this.omega = new Vector3(0, 0, 0);
+    this.alpha = new Vector3(0, 0, 0);
+    this.inertia = 1.0; // keep simple
 }
 
 public Drone(Vector3 position, double mass, Vector3 target) {
@@ -26,6 +36,11 @@ public Drone(Vector3 position, double mass, Vector3 target) {
     this.velocity = new Vector3(0,0,0);
     this.acceleration = new Vector3(0,0,0);
     setTarget(target);
+    this.omega = new Vector3(0, 0, 0);
+    this.alpha = new Vector3(0, 0, 0);
+    this.inertia = 1.0;
+    this.rotation = Matrix3.identity();
+
 }
 
 public int getId() {
@@ -85,6 +100,27 @@ public void setTarget(Vector3 t) {
 }
     this.target = t;
 }
+    public Matrix3 getRotation() {
+        return rotation;
+    }
+
+    public Vector3 getOmega() {
+        return omega;
+    }
+
+    public void setOmega(Vector3 w) {
+        if (w == null) throw new IllegalArgumentException("omega cannot be null");
+        this.omega = w;
+    }
+
+    public double getInertia() {
+        return inertia;
+    }
+
+    public void setInertia(double inertia) {
+        if (inertia <= 0) throw new IllegalArgumentException("inertia must be positive");
+        this.inertia = inertia;
+    }
 
 public void applyForce(Vector3 force) {
     if (force == null) {
@@ -93,15 +129,35 @@ public void applyForce(Vector3 force) {
     Vector3 a = force.scale(1.0 / mass);
     this.acceleration = this.acceleration.add(a);
 }
+    public void applyTorque(Vector3 torque) {
+        if (torque == null) throw new IllegalArgumentException("torque cannot be null");
+        Vector3 alpha = torque.scale(1.0 / inertia);
+        this.alpha = this.alpha.add(alpha);
+    }
 
-public void update(double dt) {
-if (dt <= 0) {
-throw new IllegalArgumentException("dt must be positive");
-}
-this.velocity = this.velocity.add(this.acceleration.scale(dt));
-this.position = this.position.add(this.velocity.scale(dt));
-this.acceleration = new Vector3(0, 0, 0);
-}
+    public void resetAngularAcceleration() {
+        this.alpha = new Vector3(0, 0, 0);
+    }
+
+    public void update(double dt) {
+        if (dt <= 0) throw new IllegalArgumentException("dt must be positive");
+
+        // -------- translational integration --------
+        this.velocity = this.velocity.add(this.acceleration.scale(dt));
+        this.position = this.position.add(this.velocity.scale(dt));
+        this.acceleration = new Vector3(0, 0, 0);
+
+        // -------- rotational integration (CEP requirement) --------
+        // ω = ω + ω̇ Δt
+        this.omega = this.omega.add(this.alpha.scale(dt));
+
+        // R = R * Exp(ω Δt)
+        Matrix3 dR = Matrix3.expSO3(this.omega.scale(dt));
+        this.rotation = this.rotation.multiply(dR);
+        this.rotation = this.rotation.orthonormalize();
+
+        this.alpha = new Vector3(0, 0, 0);
+    }
 
 public void resetAcceleration() {
 this.acceleration = new Vector3(0, 0, 0);
@@ -113,6 +169,8 @@ System.out.println("Position: " + position.toString());
 System.out.println("Velocity: " + velocity.toString());
 System.out.println("Acceleration: " + acceleration.toString());
 System.out.println("Target: " + target.toString());
+System.out.println("Omega: " + omega.toString());
+System.out.println("OmegaDot: " + alpha.toString());
 }
 
 

@@ -6,7 +6,7 @@ import Core.Obstacle;
 import physics.Drone;
 
 public class ObstacleManager {
-private double strength;
+    private double strength;
 public ObstacleManager(double strength) {
     this.strength = strength;
 }
@@ -30,8 +30,12 @@ public Vector3 computeObstacleForce(Drone d, List<Obstacle> obstacles) {
         total = total.add(repulse);
     }
 
+
     return total;
 }
+    public void setStrength(double strength) {
+        this.strength = strength;
+    }
 
 
 }

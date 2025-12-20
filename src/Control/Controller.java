@@ -4,7 +4,26 @@ import Core.*;
 
 public class Controller {
 public double kp = 8.0;
-public double kd = 3.0;
+
+    public void setKp(double kp) {
+        this.kp = kp;
+    }
+
+    public void setKd(double kd) {
+        this.kd = kd;
+    }
+
+    public void setkYaw(double kYaw) {
+        this.kYaw = kYaw;
+    }
+
+    public void setkDamp(double kDamp) {
+        this.kDamp = kDamp;
+    }
+
+    public double kd = 3.0;
+private double kYaw = 2.0;
+private double kDamp = 0.6;
 
 public Vector3 computeThrust(Drone d, Vector3 target, Vector3 gravity){
     Vector3 ePos = target.sub(d.getPosition());
@@ -14,6 +33,26 @@ public Vector3 computeThrust(Drone d, Vector3 target, Vector3 gravity){
     accDesired = accDesired.add(new Vector3(0,0,9.81));
     return accDesired.scale(d.getMass());
 }
+
+    public Vector3 computeTorque(Drone d) {
+        // minimal: try to rotate drone toward target direction
+
+        Vector3 dir = d.getTarget().sub(d.getPosition());
+        if (dir.magnitude() < 1e-9) return new Vector3(0,0,0);
+        dir = dir.normalize();
+
+        // forward axis in world = R*(1,0,0)
+        Vector3 forward = d.getRotation().multiply(new Vector3(1,0,0)).normalize();
+
+        // axis error = forward x dir
+        Vector3 axisErr = forward.cross(dir);
+
+        // PD torque (simple)
+        double k = 2.0;
+        double kd = 0.6;
+
+        return axisErr.scale(k).sub(d.getOmega().scale(kd));
+    }
 
 
 }

@@ -9,7 +9,7 @@ public class DrawPanel extends JPanel {
 
     private Simulator sim;
     private double scale = 10.0;
-    private double heightFactor = 6.0; // controls z depth
+    private double heightFactor = 6.0;
 
     public DrawPanel(Simulator sim) {
         this.sim = sim;
@@ -25,7 +25,7 @@ public class DrawPanel extends JPanel {
         super.paintComponent(g);
 
         Graphics2D g2 = (Graphics2D) g;
-
+        g2.setStroke(new BasicStroke(3f));
         g2.setRenderingHint(
                 RenderingHints.KEY_ANTIALIASING,
                 RenderingHints.VALUE_ANTIALIAS_ON
@@ -33,6 +33,22 @@ public class DrawPanel extends JPanel {
 
         int cx = getWidth() / 2;
         int cy = getHeight() / 2;
+
+        Graphics2D g3 = (Graphics2D) g;
+
+        double w = sim.getAreaWidth();
+        double l = sim.getAreaLength();
+
+        int halfWpx = (int)((w / 2.0) * scale);
+        int halfLpx = (int)((l / 2.0) * scale);
+
+        int x0 = cx - halfWpx;
+        int y0 = cy - halfLpx;
+        g3.setBackground(new Color(0, 0, 0, 80));
+        g3.setColor(Color.blue);
+        g3.setStroke(new BasicStroke(5f));
+        g3.drawRect(x0, y0, halfWpx * 2, halfLpx * 2);
+
 
         // draw drones
         for (Drone d : sim.getDrones()) {
@@ -50,7 +66,7 @@ public class DrawPanel extends JPanel {
             g2.setColor(new Color(0, 0, 0, 60));
             g2.fillOval(x - size, groundY - size / 2, size * 2, size);
 
-            // Drone body
+
             g2.setColor(Color.BLUE);
             g2.fillOval(x - size, y - size, size * 2, size * 2);
 

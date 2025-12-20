@@ -45,6 +45,9 @@ public class CommunicationModule {
             }
         }
     }
+    public void setpLoss(double pLoss) {
+        this.pLoss = pLoss;
+    }
 
     public double getCommRange() {
         return commRange;
