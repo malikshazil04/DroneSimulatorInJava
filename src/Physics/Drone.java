@@ -68,7 +68,6 @@ public void setAcceleration(Vector3 a) {
 public double getMass() {
     return mass;
 }
-
 public void setMass(double m) {
     if (m <= 0) {
         throw new IllegalArgumentException("mass must be positive");

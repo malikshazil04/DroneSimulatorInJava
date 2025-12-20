@@ -1,33 +1,49 @@
 package Control;
-
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
-
 import Core.Vector3;
-
+import physics.Drone;
 public class CSVExporter {
+    private final FileWriter writer;
+    public CSVExporter(File directory) {
+        if (directory == null) {
+            throw new IllegalArgumentException("directory cannot be null");
+        }
+        if (!directory.exists()) {
+            directory.mkdirs();
+        }
 
-private FileWriter writer;
-
-public CSVExporter(String filePath) {
-
-    try {
-        writer = new FileWriter(filePath);
-        writer.write("step,droneId,x,y,z\n");
-        writer.flush();
-    } catch (IOException e) {
-        throw new RuntimeException("cannot create csv file");
+        File file = new File(directory, "positions.csv");
+        try {
+            writer = new FileWriter(file);
+            writer.write("step,droneId,px,py,pz,vx,vy,vz,thrustZ\n");
+            writer.flush();
+        } catch (IOException e) {
+            throw new RuntimeException("cannot create positions.csv");
+        }
     }
-}
 
-public void writeRow(int step,int droneId,Vector3 position) {
-    try {
-        writer.write(step + ", " +droneId + ", " + position.toString() + "\n");
-        writer.flush();
-    } catch (IOException e) {
-        System.out.println("csv write failed");
+    public void writeRow(int step, Drone d, double thrustZ) {
+        try {
+            Vector3 p = d.getPosition();
+            Vector3 v = d.getVelocity();
+
+            writer.write(
+                    step + "," + d.getId() + "," +  p.x + "," + p.y + "," + p.z + "," +  v.x + "," + v.y + "," + v.z + "," +  thrustZ + "\n"
+            );
+            writer.flush();
+
+        } catch (IOException e) {
+            System.out.println("csv write failed");
+        }
     }
-}
 
-
+    public void close() {
+        try {
+            if (writer != null) writer.close();
+        } catch (IOException e) {
+            System.out.println("csv close failed");
+        }
+    }
 }

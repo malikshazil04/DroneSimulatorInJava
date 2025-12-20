@@ -1,4 +1,5 @@
 package Core;
+import java.io.*;
 public class Config {
 
 public double dt;
@@ -10,38 +11,57 @@ public double formationKVel;
 public double collisionSafeDistance;
 public double collisionStrength;
 public double obstacleStrength;
+public double dragK ;
+public double commRange;
+public double pLoss;
+public int logEvery;
+
 
 public Config() {
 
-    dt = 0.05;
-    totalTime = 10.0;
+    dt = 0;
+    totalTime = 0;
 
-    gravity = new Vector3(0, 0, -9.81);
+    gravity = new Vector3(0, 0, 0);
 
-    formationSpacing = 3.0;
-    formationKPos = 0.2;
-    formationKVel = 0.1;
+    formationSpacing = 0;
+    formationKPos = 0;
+    formationKVel = 0;
 
-    collisionSafeDistance = 2.0;
-    collisionStrength = 0.8;
+    collisionSafeDistance = 0;
+    collisionStrength = 0;
 
-    obstacleStrength = 1.0;
+    obstacleStrength = 0;
+
+    commRange = 0.0;
+    pLoss = 0;
+    logEvery = 0;
 }
-public Config(double dt, double totalTime,double formationSpacing,double formationKPos,double formationKVel, double collisionSafeDistance,double collisionStrength, double obstacleStrength) {
-    if (dt <= 0 || totalTime <= 0) {
-        throw new IllegalArgumentException("time values must be positive");
+    public void loadFromFile(String filePath) {
+        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
+
+            String line;
+            while ((line = br.readLine()) != null) {
+
+                if (line.trim().isEmpty() || !line.contains("=")) continue;
+
+                String[] parts = line.split("=");
+                String key = parts[0].trim();
+                double value = Double.parseDouble(parts[1].trim());
+
+                switch (key) {
+                    case "dt": dt = value; break;
+                    case "totalTime": totalTime = value; break;
+                    case "dragK": dragK = value; break;
+                    case "commRange": commRange = value; break;
+                    case "pLoss": pLoss = value; break;
+                    case "formationSpacing": formationSpacing = value; break;
+                    case "collisionSafeDistance": collisionSafeDistance = value; break;
+                }
+            }
+
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to load config file");
+        }
     }
-    this.dt = dt;
-    this.totalTime = totalTime;
-    this.gravity = new Vector3(0, 0, -9.81);
-
-    this.formationSpacing = formationSpacing;
-    this.formationKPos = formationKPos;
-    this.formationKVel = formationKVel;
-
-    this.collisionSafeDistance = collisionSafeDistance;
-    this.collisionStrength = collisionStrength;
-
-    this.obstacleStrength = obstacleStrength;
-}
 }

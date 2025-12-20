@@ -1,25 +1,85 @@
 package Control;
-
+import java.util.List;
+import java.util.Random;
+import physics.Drone;
 public class CommunicationModule {
-private String lastMessage;
+    private double commRange;
+    private double pLoss;
+    private int attempts;
+    private int successes;
+    private String lastMessage;
+    private Random random;
 
-public CommunicationModule() {
-    this.lastMessage = "";
-}
-
-public void sendMessage(String msg) {
-    if (msg == null) {
-        throw new IllegalArgumentException("message cannot be null");
+    public CommunicationModule(double commRange, double pLoss) {
+        if (commRange <= 0) {
+            throw new IllegalArgumentException("commRange must be positive");
+        }
+        if (pLoss < 0 || pLoss > 1) {
+            throw new IllegalArgumentException("pLoss must be in [0,1]");
+        }
+        this.commRange = commRange;
+        this.pLoss = pLoss;
+        this.attempts = 0;
+        this.successes = 0;
+        this.lastMessage = "";
+        this.random = new Random();
     }
-    this.lastMessage = msg;
-}
 
-public String readMessage() {
-    return this.lastMessage;
-}
+    public void exchangeStates(List<Drone> drones) {
 
-public void clear() {
-    this.lastMessage = "";
-}
-    
+        for (int i = 0; i < drones.size(); i++) {
+            for (int j = i + 1; j < drones.size(); j++) {
+                Drone a = drones.get(i);
+                Drone b = drones.get(j);
+                double dist = a.getPosition().distance(b.getPosition());
+                if (dist <= commRange) {
+                    attempts++;
+                    boolean ok = random.nextDouble() > pLoss;
+                    if (ok) {
+                        successes++;
+                        lastMessage = "COMM OK: " + a.getId() + " <-> " + b.getId() + " dist=" + dist;
+                    } else {
+                        lastMessage = "COMM LOST: " + a.getId() + " <-> " + b.getId() + " dist=" + dist;
+                    }
+                }
+            }
+        }
+    }
+
+    public double getCommRange() {
+        return commRange;
+    }
+    public void setCommRange(double commRange) {
+        if (commRange <= 0) {
+            throw new IllegalArgumentException("commRange must be positive");
+        }
+        this.commRange = commRange;
+    }
+    public double getPLoss() {
+        return pLoss;
+    }
+    public void setPLoss(double pLoss) {
+        if (pLoss < 0 || pLoss > 1) {
+            throw new IllegalArgumentException("pLoss must be in [0,1]");
+        }
+        this.pLoss = pLoss;
+    }
+    public int getAttempts() {
+        return attempts;
+    }
+    public int getSuccesses() {
+        return successes;
+    }
+    public double getSuccessRate() {
+        if (attempts == 0) return 0.0;
+        return (double) successes / attempts;
+    }
+    public String getLastMessage() {
+        return lastMessage;
+    }
+    public void resetCounters() {
+        attempts = 0;
+        successes = 0;
+        lastMessage = "";
+    }
 }
