@@ -13,20 +13,33 @@ public class DrawPanel extends JPanel {
     private double scale = 10.0;
     private double heightFactor = 6.0;
     private Image droneImage;
+    private Image grassImage;
+    private double propellerRotation = 0.0; // Track propeller rotation angle
 
     public DrawPanel(Simulator sim) {
         this.sim = sim;
         setBackground(Color.WHITE);
         try {
             // Try loading from file system first (for development)
-            java.io.File imgFile = new java.io.File("src/drone_texture.png");
+            java.io.File imgFile = new java.io.File("src/Drone.png");
             if (imgFile.exists()) {
                 droneImage = javax.imageio.ImageIO.read(imgFile);
             } else {
                 // Fallback to resource stream
-                java.net.URL imgUrl = getClass().getResource("/drone_texture.png");
+                java.net.URL imgUrl = getClass().getResource("/Drone.png");
                 if (imgUrl != null) {
                     droneImage = javax.imageio.ImageIO.read(imgUrl);
+                }
+            }
+
+            // Load grass background
+            java.io.File grassFile = new java.io.File("src/grass_background.png");
+            if (grassFile.exists()) {
+                grassImage = javax.imageio.ImageIO.read(grassFile);
+            } else {
+                java.net.URL grassUrl = getClass().getResource("/grass_background.png");
+                if (grassUrl != null) {
+                    grassImage = javax.imageio.ImageIO.read(grassUrl);
                 }
             }
         } catch (Exception e) {
@@ -51,6 +64,10 @@ public class DrawPanel extends JPanel {
         int cx = getWidth() / 2;
         int cy = getHeight() / 2;
 
+        // Draw solid green background
+        g2.setColor(new Color(76, 175, 80)); // Nice grass green
+        g2.fillRect(0, 0, getWidth(), getHeight());
+
         Graphics2D g3 = (Graphics2D) g;
 
         double w = sim.getAreaWidth();
@@ -73,34 +90,70 @@ public class DrawPanel extends JPanel {
             int x = cx + (int) (p.x * scale);
             int y = cy - (int) (p.y * scale) - (int) (p.z * heightFactor);
 
-            int size = 8 + (int) (p.z * 0.3);
+            int size = 24 + (int) (p.z * 0.8); // Increased base size from 16 to 24
 
             // ground shadow
             int groundY = cy - (int) (p.y * scale);
             g2.setColor(new Color(0, 0, 0, 60));
             g2.fillOval(x - size, groundY - size / 2, size * 2, size);
 
-            // drone body
+            // Draw drone image if available, otherwise fallback to shapes
             if (droneImage != null) {
-                // Draw image centered at (x, y) with width/height = size*2
-                int imgW = size * 2;
-                int imgH = size * 2; // Assuming mostly square aspect ratio for simplicity
-                g2.drawImage(droneImage, x - size, y - size, imgW, imgH, null);
+                int imgSize = size * 2;
+
+                // Save the current transform
+                java.awt.geom.AffineTransform oldTransform = g2.getTransform();
+
+                // Apply rotation transformation if simulation is running
+                if (sim.isRunning() && !sim.isPaused()) {
+                    // Rotate propellers based on elapsed time (360 degrees per second)
+                    propellerRotation = (sim.getElapsedTime() * 360.0) % 360.0;
+                }
+
+                // Translate to drone position, rotate, then draw centered
+                g2.translate(x, y);
+                g2.rotate(Math.toRadians(propellerRotation));
+                g2.drawImage(droneImage, -size, -size, imgSize, imgSize, this);
+
+                // Restore original transform
+                g2.setTransform(oldTransform);
             } else {
-                // Fallback if image failed to load
-                g2.setColor(Color.BLUE);
+                // Fallback: drone body - dark red with white blades
+                g2.setColor(new Color(139, 0, 0)); // Dark red
                 g2.fillOval(x - size, y - size, size * 2, size * 2);
+
+                // Draw white propeller blades (4 blades in X pattern)
+                g2.setColor(Color.WHITE);
+                g2.setStroke(new BasicStroke(3f));
+                int bladeLen = (int) (size * 1.3);
+
+                // Apply rotation to fallback propellers too
+                java.awt.geom.AffineTransform oldTransform = g2.getTransform();
+                if (sim.isRunning() && !sim.isPaused()) {
+                    propellerRotation = (sim.getElapsedTime() * 360.0) % 360.0;
+                }
+                g2.translate(x, y);
+                g2.rotate(Math.toRadians(propellerRotation));
+
+                // Diagonal blades (centered at origin after translation)
+                g2.drawLine(-bladeLen, -bladeLen, bladeLen, bladeLen);
+                g2.drawLine(-bladeLen, bladeLen, bladeLen, -bladeLen);
+
+                g2.setTransform(oldTransform);
             }
 
-            // target marker
+            // target marker - dark purple, more visible
             Vector3 t = d.getTarget();
             int tx = cx + (int) (t.x * scale);
             int ty = cy - (int) (t.y * scale);
 
-            g2.setColor(Color.RED);
-            g2.setStroke(new BasicStroke(2f));
-            g2.drawLine(tx - 5, ty, tx + 5, ty);
-            g2.drawLine(tx, ty - 5, tx, ty + 5);
+            g2.setColor(new Color(75, 0, 130)); // Dark purple (Indigo)
+            g2.setStroke(new BasicStroke(4f)); // Thicker stroke
+            int crossSize = 10; // Bigger crosshair
+            g2.drawLine(tx - crossSize, ty, tx + crossSize, ty);
+            g2.drawLine(tx, ty - crossSize, tx, ty + crossSize);
+            // Add circle around target for more visibility
+            g2.drawOval(tx - 6, ty - 6, 12, 12);
         }
     }
 }

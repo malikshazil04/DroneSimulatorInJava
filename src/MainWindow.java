@@ -56,7 +56,6 @@ public class MainWindow {
     private Simulator simulator;
     private DrawPanel drawPanel;
     private Timer simTimer;
-    private JTextField timerField;
     private JLabel avgSpacing;
     private JTextField avgSpacingField;
     private JLabel collisionPercentage;
@@ -95,9 +94,9 @@ public class MainWindow {
         rightPanel.add(statusField);
         statusField.setText("Stopped");
         rightPanel.add(timerLabel);
-        timerField.setEditable(false);
-        rightPanel.add(timerField);
-        timerField.setText("0.0");
+        simTimerField.setEditable(false);
+        rightPanel.add(simTimerField);
+        simTimerField.setText("0.0");
 
         rightPanel.add(collisionPercentage);
         collisionPercentageField.setEditable(false);
@@ -131,7 +130,7 @@ public class MainWindow {
             applyLeftParams(); // Auto-apply left params too for consistency
 
             // Reset fields
-            timerField.setText("0.00");
+            simTimerField.setText("0.00");
             avgSpacingField.setText("0.00");
             collisionPercentageField.setText("0.0%");
 
@@ -307,11 +306,34 @@ public class MainWindow {
 
         JPanel northRow1 = new JPanel(new FlowLayout());
         startButton = new JButton("Start");
+        startButton.setBackground(new Color(46, 204, 113)); // Green
+        startButton.setForeground(Color.WHITE);
+        startButton.setFont(new Font("Arial", Font.BOLD, 14));
+
         pauseButton = new JButton("Pause");
+        pauseButton.setBackground(new Color(241, 196, 15)); // Yellow
+        pauseButton.setForeground(Color.WHITE);
+        pauseButton.setFont(new Font("Arial", Font.BOLD, 14));
+
         resumeButton = new JButton("Resume");
+        resumeButton.setBackground(new Color(52, 152, 219)); // Blue
+        resumeButton.setForeground(Color.WHITE);
+        resumeButton.setFont(new Font("Arial", Font.BOLD, 14));
+
         stopButton = new JButton("Stop");
+        stopButton.setBackground(new Color(231, 76, 60)); // Red
+        stopButton.setForeground(Color.WHITE);
+        stopButton.setFont(new Font("Arial", Font.BOLD, 14));
+
         resetButton = new JButton("Reset");
+        resetButton.setBackground(new Color(155, 89, 182)); // Purple
+        resetButton.setForeground(Color.WHITE);
+        resetButton.setFont(new Font("Arial", Font.BOLD, 14));
+
         chooseFolderButton = new JButton("Choose Folder");
+        chooseFolderButton.setBackground(new Color(52, 73, 94)); // Dark Blue
+        chooseFolderButton.setForeground(Color.WHITE);
+        chooseFolderButton.setFont(new Font("Arial", Font.BOLD, 14));
 
         northRow1.add(startButton);
         northRow1.add(pauseButton);
@@ -322,20 +344,51 @@ public class MainWindow {
 
         JPanel northRow2 = new JPanel(new FlowLayout());
         velocity = new JLabel("Velocity");
+        velocity.setForeground(new Color(231, 76, 60));
+        velocity.setFont(new Font("Arial", Font.BOLD, 12));
         velocityField = new JTextField(5);
+        velocityField.setBackground(new Color(255, 224, 230));
+
         dt = new JLabel("dt");
+        dt.setForeground(new Color(46, 204, 113));
+        dt.setFont(new Font("Arial", Font.BOLD, 12));
         dtField = new JTextField(5);
+        dtField.setBackground(new Color(230, 255, 237));
+
         TotalTime = new JLabel("Total Time");
+        TotalTime.setForeground(new Color(52, 152, 219));
+        TotalTime.setFont(new Font("Arial", Font.BOLD, 12));
         totalTimeField = new JTextField(5);
+        totalTimeField.setBackground(new Color(227, 242, 253));
+
         spacing = new JLabel("Spacing");
+        spacing.setForeground(new Color(155, 89, 182));
+        spacing.setFont(new Font("Arial", Font.BOLD, 12));
         spacingField = new JTextField(5);
+        spacingField.setBackground(new Color(243, 235, 248));
+
         Distance = new JLabel("Distance");
+        Distance.setForeground(new Color(230, 126, 34));
+        Distance.setFont(new Font("Arial", Font.BOLD, 12));
         safeDistanceField = new JTextField(5);
+        safeDistanceField.setBackground(new Color(255, 243, 224));
+
         areaLength = new JLabel("Area Length");
+        areaLength.setForeground(new Color(26, 188, 156));
+        areaLength.setFont(new Font("Arial", Font.BOLD, 12));
         areaLengthField = new JTextField(5);
+        areaLengthField.setBackground(new Color(224, 247, 242));
+
         areaWidth = new JLabel("Area Width");
+        areaWidth.setForeground(new Color(241, 196, 15));
+        areaWidth.setFont(new Font("Arial", Font.BOLD, 12));
         areaWidthField = new JTextField(5);
+        areaWidthField.setBackground(new Color(255, 249, 219));
+
         applyButton = new JButton("Apply");
+        applyButton.setBackground(new Color(26, 188, 156));
+        applyButton.setForeground(Color.WHITE);
+        applyButton.setFont(new Font("Arial", Font.BOLD, 14));
 
         northRow2.add(velocity);
         northRow2.add(velocityField);
@@ -366,24 +419,60 @@ public class MainWindow {
         // Left Panel
         leftPanel = new JPanel();
         leftPanel.setLayout(new GridLayout(0, 2));
+        leftPanel.setBackground(new Color(236, 240, 241));
 
         kp = new JLabel("Position Gain (kp)");
+        kp.setForeground(new Color(192, 57, 43));
+        kp.setFont(new Font("Arial", Font.BOLD, 11));
         kpField = new JTextField();
+        kpField.setBackground(new Color(255, 236, 235));
+
         kd = new JLabel("Velocity Gain (kd)");
+        kd.setForeground(new Color(39, 174, 96));
+        kd.setFont(new Font("Arial", Font.BOLD, 11));
         kdField = new JTextField();
+        kdField.setBackground(new Color(232, 248, 239));
+
         kYaw = new JLabel("Direction Gain (kYaw)");
+        kYaw.setForeground(new Color(41, 128, 185));
+        kYaw.setFont(new Font("Arial", Font.BOLD, 11));
         kYawField = new JTextField();
+        kYawField.setBackground(new Color(232, 243, 250));
+
         kDamp = new JLabel("Angular Damping (kDamp)");
+        kDamp.setForeground(new Color(142, 68, 173));
+        kDamp.setFont(new Font("Arial", Font.BOLD, 11));
         kDampField = new JTextField();
+        kDampField.setBackground(new Color(244, 236, 249));
+
         dragK = new JLabel("Air Drag (dragK)");
+        dragK.setForeground(new Color(211, 84, 0));
+        dragK.setFont(new Font("Arial", Font.BOLD, 11));
         dragKField = new JTextField();
+        dragKField.setBackground(new Color(255, 243, 230));
+
         commRange = new JLabel("Range");
+        commRange.setForeground(new Color(22, 160, 133));
+        commRange.setFont(new Font("Arial", Font.BOLD, 11));
         commonRnageField = new JTextField();
+        commonRnageField.setBackground(new Color(227, 244, 241));
+
         pLoss = new JLabel("pLoss");
+        pLoss.setForeground(new Color(243, 156, 18));
+        pLoss.setFont(new Font("Arial", Font.BOLD, 11));
         pLossField = new JTextField();
+        pLossField.setBackground(new Color(255, 247, 230));
+
         obstacleStrength = new JLabel("Obstacle Strength");
+        obstacleStrength.setForeground(new Color(44, 62, 80));
+        obstacleStrength.setFont(new Font("Arial", Font.BOLD, 11));
         obstacleStrengthField = new JTextField();
+        obstacleStrengthField.setBackground(new Color(236, 240, 241));
+
         Apply2 = new JButton("Apply");
+        Apply2.setBackground(new Color(41, 128, 185));
+        Apply2.setForeground(Color.WHITE);
+        Apply2.setFont(new Font("Arial", Font.BOLD, 14));
 
         leftPanel.add(kp);
         leftPanel.add(kpField);
@@ -408,19 +497,41 @@ public class MainWindow {
 
         // Right Panel (Correct initialization for manual build later)
         rightPanel = new JPanel();
+        rightPanel.setBackground(new Color(250, 250, 250));
+
         simulationStatus = new JLabel("Simulation Status");
+        simulationStatus.setForeground(new Color(231, 76, 60));
+        simulationStatus.setFont(new Font("Arial", Font.BOLD, 13));
         statusField = new JTextField();
-        timerField = new JTextField(); // Used in constructor manual build
+        statusField.setBackground(new Color(255, 235, 235));
+        statusField.setForeground(new Color(192, 57, 43));
+        statusField.setFont(new Font("Arial", Font.BOLD, 14));
+
+        simTimerField = new JTextField(); // Used in constructor manual build
+        simTimerField.setBackground(new Color(244, 236, 249)); // Purple tint for timer
+        simTimerField.setForeground(new Color(142, 68, 173));
+        simTimerField.setFont(new Font("Arial", Font.BOLD, 14));
+
         collisionPercentage = new JLabel("Collision %");
+        collisionPercentage.setForeground(new Color(230, 126, 34));
+        collisionPercentage.setFont(new Font("Arial", Font.BOLD, 13));
         collisionPercentageField = new JTextField();
+        collisionPercentageField.setBackground(new Color(255, 243, 224));
+        collisionPercentageField.setForeground(new Color(211, 84, 0));
+        collisionPercentageField.setFont(new Font("Arial", Font.BOLD, 14));
+
         avgSpacing = new JLabel("Avg. Spacing");
+        avgSpacing.setForeground(new Color(52, 152, 219));
+        avgSpacing.setFont(new Font("Arial", Font.BOLD, 13));
         avgSpacingField = new JTextField();
-        simTimerField = new JTextField();
+        avgSpacingField.setBackground(new Color(232, 243, 250));
+        avgSpacingField.setForeground(new Color(41, 128, 185));
+        avgSpacingField.setFont(new Font("Arial", Font.BOLD, 14));
 
         rootPanel.add(rightPanel, BorderLayout.EAST);
 
         // Initialize Timer
-        simTimer = new javax.swing.Timer(50, new ActionListener() {
+        simTimer = new Timer(50, new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
                 if (simulator != null && simulator.isRunning() && !simulator.isPaused()) {
@@ -431,7 +542,7 @@ public class MainWindow {
                         }
 
                         // precise text field update
-                        timerField.setText(String.format("%.2f", simulator.getElapsedTime()));
+                        simTimerField.setText(String.format("%.2f", simulator.getElapsedTime()));
                         statusField.setText(simulator.isRunning() ? "Running" : "Stopped");
                         avgSpacingField.setText(String.format("%.2f", simulator.computeAverageSpacing()));
                         collisionPercentageField.setText(String.format("%.1f%%", simulator.getCollisionPercentage()));
