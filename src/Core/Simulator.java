@@ -27,8 +27,8 @@ public class Simulator {
     private double areaLength = 120.0;
     private double wallBounce = 0.6;
     private double elapsedTime = 0.0;
-    private int collisionCountStep = 0;   // collisions in the current step (optional)
-    private int collisionCountTotal = 0;  // total collisions across sim (optional)
+    private int collisionCountStep = 0; // collisions in the current step (optional)
+    private int collisionCountTotal = 0; // total collisions across sim (optional)
     private double targetTolerance = 0.8;
     private ObstacleManager obstacleManager;
     public List<Obstacle> obstacles;
@@ -114,15 +114,16 @@ public class Simulator {
             throw new IllegalArgumentException("wallBounce must be 0..1");
         this.wallBounce = b;
     }
+
     public double getElapsedTime() {
         return elapsedTime;
     }
 
     public void setTargetTolerance(double tol) {
-        if (tol <= 0) throw new IllegalArgumentException("tol must be > 0");
+        if (tol <= 0)
+            throw new IllegalArgumentException("tol must be > 0");
         this.targetTolerance = tol;
     }
-
 
     private void enforceBoundaryBounce(Drone d) {
         double halfW = areaWidth / 2.0;
@@ -226,9 +227,11 @@ public class Simulator {
 
         return pairs == 0 ? 0.0 : sum / pairs;
     }
+
     public double getCollisionPercentage() {
         int n = drones.size();
-        if (n < 2) return 0.0;
+        if (n < 2)
+            return 0.0;
 
         int pairs = n * (n - 1) / 2;
         int collisions = 0;
@@ -238,16 +241,19 @@ public class Simulator {
         for (int i = 0; i < n; i++) {
             for (int j = i + 1; j < n; j++) {
                 double dist = drones.get(i).getPosition().distance(drones.get(j).getPosition());
-                if (dist < safe) collisions++;
+                if (dist < safe)
+                    collisions++;
             }
         }
 
         return (collisions * 100.0) / pairs;
     }
+
     private boolean allReachedTargets() {
         for (Drone d : drones) {
             double dist = d.getPosition().distance(d.getTarget());
-            if (dist > targetTolerance) return false;
+            if (dist > targetTolerance)
+                return false;
         }
         return true;
     }
@@ -360,11 +366,13 @@ public class Simulator {
             // integrate
             d.update(dt);
             enforceBoundaryBounce(d);
-            elapsedTime += dt;
 
             double thrustBodyZ = d.getRotation().transpose().multiply(thrust).z;
             csvExporter.writeRow(currentStep, d, thrustBodyZ);
         }
+
+        // Increment elapsed time once per step, not per drone
+        elapsedTime += dt;
         if (config.logEvery > 0 && currentStep % config.logEvery == 0) {
             logger.log("step " + currentStep);
         }

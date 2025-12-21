@@ -62,6 +62,8 @@ public class MainWindow {
     private JTextField simTimerField;
     private JTextField collisionPercentageField;
     private java.io.File logDirectory = new java.io.File("logs");
+    private long startTimeMillis = 0; // Track real wall-clock start time
+    private double realTimeElapsed = 0.0; // Real seconds elapsed
 
     public MainWindow() {
         setupUI();
@@ -111,6 +113,7 @@ public class MainWindow {
         startButton.addActionListener(e -> {
             applyParams(); // Auto-apply right panel params (including Velocity)
             simulator.startSim();
+            startTimeMillis = System.currentTimeMillis(); // Record real start time
             simTimer.start();
             statusField.setText("Running");
         });
@@ -130,6 +133,8 @@ public class MainWindow {
             applyLeftParams(); // Auto-apply left params too for consistency
 
             // Reset fields
+            startTimeMillis = 0;
+            realTimeElapsed = 0.0;
             simTimerField.setText("0.00");
             avgSpacingField.setText("0.00");
             collisionPercentageField.setText("0.0%");
@@ -541,8 +546,13 @@ public class MainWindow {
                             drawPanel.repaint();
                         }
 
-                        // precise text field update
-                        simTimerField.setText(String.format("%.2f", simulator.getElapsedTime()));
+                        // Calculate real-time elapsed (in seconds)
+                        if (startTimeMillis > 0) {
+                            realTimeElapsed = (System.currentTimeMillis() - startTimeMillis) / 1000.0;
+                        }
+
+                        // Update UI with real time (not simulation time)
+                        simTimerField.setText(String.format("%.2f", realTimeElapsed));
                         statusField.setText(simulator.isRunning() ? "Running" : "Stopped");
                         avgSpacingField.setText(String.format("%.2f", simulator.computeAverageSpacing()));
                         collisionPercentageField.setText(String.format("%.1f%%", simulator.getCollisionPercentage()));

@@ -14,7 +14,8 @@ public class DrawPanel extends JPanel {
     private double heightFactor = 6.0;
     private Image droneImage;
     private Image grassImage;
-    private double propellerRotation = 0.0; // Track propeller rotation angle
+    private java.util.HashMap<Integer, Double> droneRotations = new java.util.HashMap<>(); // Per-drone rotation
+    private java.util.HashSet<Integer> completedDrones = new java.util.HashSet<>(); // Track completed drones
 
     public DrawPanel(Simulator sim) {
         this.sim = sim;
@@ -104,15 +105,37 @@ public class DrawPanel extends JPanel {
                 // Save the current transform
                 java.awt.geom.AffineTransform oldTransform = g2.getTransform();
 
-                // Apply rotation transformation if simulation is running
-                if (sim.isRunning() && !sim.isPaused()) {
-                    // Rotate propellers based on elapsed time (360 degrees per second)
-                    propellerRotation = (sim.getElapsedTime() * 360.0) % 360.0;
+                // Get or initialize this drone's rotation angle
+                int droneId = d.getId();
+                double currentRotation = droneRotations.getOrDefault(droneId, 0.0);
+
+                if (sim.isRunning() && !sim.isPaused() && !completedDrones.contains(droneId)) {
+                    // Calculate distance to target
+                    Vector3 toTarget = d.getTarget().sub(d.getPosition());
+                    double distToTarget = toTarget.magnitude();
+
+                    // Check if drone has reached target (within 2 units)
+                    if (distToTarget < 2.0) {
+                        // Perform one 360° rotation at 180 deg/s (2 seconds for full rotation)
+                        if (currentRotation < 360.0) {
+                            currentRotation += 180.0 * 0.05; // 0.05 is the repaint interval
+                            droneRotations.put(droneId, currentRotation);
+                        } else {
+                            // Rotation complete, mark drone as done
+                            completedDrones.add(droneId);
+
+                            // Check if all drones are done
+                            if (completedDrones.size() == sim.getDrones().size()) {
+                                // Stop simulation when all drones complete their rotation
+                                sim.stopSim();
+                            }
+                        }
+                    }
                 }
 
                 // Translate to drone position, rotate, then draw centered
                 g2.translate(x, y);
-                g2.rotate(Math.toRadians(propellerRotation));
+                g2.rotate(Math.toRadians(currentRotation));
                 g2.drawImage(droneImage, -size, -size, imgSize, imgSize, this);
 
                 // Restore original transform
@@ -127,13 +150,30 @@ public class DrawPanel extends JPanel {
                 g2.setStroke(new BasicStroke(3f));
                 int bladeLen = (int) (size * 1.3);
 
-                // Apply rotation to fallback propellers too
+                // Use same rotation logic as above for fallback
+                int droneId = d.getId();
+                double currentRotation = droneRotations.getOrDefault(droneId, 0.0);
                 java.awt.geom.AffineTransform oldTransform = g2.getTransform();
-                if (sim.isRunning() && !sim.isPaused()) {
-                    propellerRotation = (sim.getElapsedTime() * 360.0) % 360.0;
+
+                if (sim.isRunning() && !sim.isPaused() && !completedDrones.contains(droneId)) {
+                    Vector3 toTarget = d.getTarget().sub(d.getPosition());
+                    double distToTarget = toTarget.magnitude();
+
+                    if (distToTarget < 2.0) {
+                        if (currentRotation < 360.0) {
+                            currentRotation += 180.0 * 0.05;
+                            droneRotations.put(droneId, currentRotation);
+                        } else {
+                            completedDrones.add(droneId);
+                            if (completedDrones.size() == sim.getDrones().size()) {
+                                sim.stopSim();
+                            }
+                        }
+                    }
                 }
+
                 g2.translate(x, y);
-                g2.rotate(Math.toRadians(propellerRotation));
+                g2.rotate(Math.toRadians(currentRotation));
 
                 // Diagonal blades (centered at origin after translation)
                 g2.drawLine(-bladeLen, -bladeLen, bladeLen, bladeLen);
