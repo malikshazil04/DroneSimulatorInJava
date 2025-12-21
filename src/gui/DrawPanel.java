@@ -12,10 +12,27 @@ public class DrawPanel extends JPanel {
     private Simulator sim;
     private double scale = 10.0;
     private double heightFactor = 6.0;
+    private Image droneImage;
 
     public DrawPanel(Simulator sim) {
         this.sim = sim;
         setBackground(Color.WHITE);
+        try {
+            // Try loading from file system first (for development)
+            java.io.File imgFile = new java.io.File("src/drone_texture.png");
+            if (imgFile.exists()) {
+                droneImage = javax.imageio.ImageIO.read(imgFile);
+            } else {
+                // Fallback to resource stream
+                java.net.URL imgUrl = getClass().getResource("/drone_texture.png");
+                if (imgUrl != null) {
+                    droneImage = javax.imageio.ImageIO.read(imgUrl);
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            System.err.println("Failed to load drone image");
+        }
     }
 
     public void setSimulator(Simulator sim) {
@@ -25,7 +42,8 @@ public class DrawPanel extends JPanel {
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
-        if (sim == null) return;
+        if (sim == null)
+            return;
 
         Graphics2D g2 = (Graphics2D) g;
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
@@ -63,8 +81,16 @@ public class DrawPanel extends JPanel {
             g2.fillOval(x - size, groundY - size / 2, size * 2, size);
 
             // drone body
-            g2.setColor(Color.BLUE);
-            g2.fillOval(x - size, y - size, size * 2, size * 2);
+            if (droneImage != null) {
+                // Draw image centered at (x, y) with width/height = size*2
+                int imgW = size * 2;
+                int imgH = size * 2; // Assuming mostly square aspect ratio for simplicity
+                g2.drawImage(droneImage, x - size, y - size, imgW, imgH, null);
+            } else {
+                // Fallback if image failed to load
+                g2.setColor(Color.BLUE);
+                g2.fillOval(x - size, y - size, size * 2, size * 2);
+            }
 
             // target marker
             Vector3 t = d.getTarget();

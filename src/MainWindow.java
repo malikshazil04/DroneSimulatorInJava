@@ -4,6 +4,8 @@ import gui.DrawPanel;
 import physics.Drone;
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 
 public class MainWindow {
     private JPanel rootPanel;
@@ -58,69 +60,18 @@ public class MainWindow {
     private JLabel avgSpacing;
     private JTextField avgSpacingField;
     private JLabel collisionPercentage;
+    private JTextField simTimerField;
     private JTextField collisionPercentageField;
     private java.io.File logDirectory = new java.io.File("logs");
 
     public MainWindow() {
+        setupUI();
 
         simulator = buildSimulator();
-
         drawPanel = new DrawPanel(simulator);
         canvasHolder.setLayout(new BorderLayout());
         canvasHolder.add(drawPanel, BorderLayout.CENTER);
-
-        // Ensure fields are initialized (in case Form binding failed)
-        if (dtField == null)
-            dtField = new JTextField();
-        if (totalTimeField == null)
-            totalTimeField = new JTextField();
-        if (spacingField == null)
-            spacingField = new JTextField();
-        if (safeDistanceField == null)
-            safeDistanceField = new JTextField();
-        if (kpField == null)
-            kpField = new JTextField();
-        if (kdField == null)
-            kdField = new JTextField();
-        if (kYawField == null)
-            kYawField = new JTextField();
-        if (kDampField == null)
-            kDampField = new JTextField();
-        if (dragKField == null)
-            dragKField = new JTextField();
-        if (commonRnageField == null)
-            commonRnageField = new JTextField();
-        if (pLossField == null)
-            pLossField = new JTextField();
-        if (obstacleStrengthField == null)
-            obstacleStrengthField = new JTextField();
-        if (areaLengthField == null)
-            areaLengthField = new JTextField();
-        if (areaWidthField == null)
-            areaWidthField = new JTextField();
-        if (velocityField == null)
-            velocityField = new JTextField();
-
-        // Initialize Labels if needed (to satisfy "use them")
-        if (simulationStatus == null)
-            simulationStatus = new JLabel("Simulation Status");
-        if (avgSpacing == null)
-            avgSpacing = new JLabel("Avg Spacing");
-        if (collisionPercentage == null)
-            collisionPercentage = new JLabel("Collision %");
-        // 'simTimer' is the Logic Timer, so we need a separate label for the UI
         JLabel timerLabel = new JLabel("Timer (s)");
-
-        // Output fields in right panel
-        if (statusField == null)
-            statusField = new JTextField();
-        if (timerField == null)
-            timerField = new JTextField();
-        if (avgSpacingField == null)
-            avgSpacingField = new JTextField();
-        if (collisionPercentageField == null)
-            collisionPercentageField = new JTextField();
-
         dtField.setText("0.05");
         totalTimeField.setText("10.0");
         spacingField.setText("3.0");
@@ -137,17 +88,12 @@ public class MainWindow {
         areaWidthField.setText("60.0");
         velocityField.setText("20.0");
 
-        // Fix Alignment in Right Panel
-        if (rightPanel == null)
-            rightPanel = new JPanel();
         rightPanel.removeAll();
         rightPanel.setLayout(new GridLayout(4, 2, 5, 5));
-
         rightPanel.add(simulationStatus);
         statusField.setEditable(false);
         rightPanel.add(statusField);
         statusField.setText("Stopped");
-
         rightPanel.add(timerLabel);
         timerField.setEditable(false);
         rightPanel.add(timerField);
@@ -162,30 +108,6 @@ public class MainWindow {
         avgSpacingField.setEditable(false);
         rightPanel.add(avgSpacingField);
         avgSpacingField.setText("0.0");
-
-        // Timer: each tick runs ONE step and repaints
-        simTimer = new Timer(40, e -> {
-            simulator.stepOnce();
-            drawPanel.repaint();
-
-            // Update Stats
-            if (simulator.isRunning() && !simulator.isPaused()) {
-                statusField.setText("Running");
-            } else if (simulator.isPaused()) {
-                statusField.setText("Paused");
-            } else {
-                statusField.setText("Stopped");
-            }
-
-            timerField.setText(String.format("%.2f", simulator.getElapsedTime()));
-            avgSpacingField.setText(String.format("%.2f", simulator.computeAverageSpacing()));
-            collisionPercentageField.setText(String.format("%.1f%%", simulator.getCollisionPercentage()));
-
-            if (!simulator.isRunning()) {
-                statusField.setText("Stopped");
-                simTimer.stop();
-            }
-        });
 
         startButton.addActionListener(e -> {
             applyParams(); // Auto-apply right panel params (including Velocity)
@@ -248,6 +170,33 @@ public class MainWindow {
 
         applyButton.addActionListener(e -> applyParams());
         Apply2.addActionListener(e -> applyLeftParams());
+        simTimerField.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+
+                // User pressed ENTER in time field
+                // We treat this as "start / restart simulation time"
+
+                try {
+                    // optional: read value (for validation only)
+                    double t = Double.parseDouble(simTimerField.getText().trim());
+                    if (t < 0)
+                        throw new NumberFormatException();
+                } catch (Exception ex) {
+                    // reset display if invalid
+                    simTimerField.setText("0.00");
+                }
+
+                // Restart simulation time cleanly
+                if (simTimer.isRunning()) {
+                    simTimer.stop();
+                }
+
+                simulator.stopSim(); // ensure clean state
+                simulator.startSim(); // resets elapsedTime internally
+                simTimer.start();
+            }
+        });
     }
 
     private Core.Simulator buildSimulator() {
@@ -346,6 +295,155 @@ public class MainWindow {
         } catch (Exception ex) {
             simulator.getLogger().log("Invalid left params: " + ex.getMessage());
         }
+    }
+
+    private void setupUI() {
+        rootPanel = new JPanel();
+        rootPanel.setLayout(new BorderLayout());
+
+        // NORTH Panel
+        NORTH = new JPanel();
+        NORTH.setLayout(new GridLayout(2, 1));
+
+        JPanel northRow1 = new JPanel(new FlowLayout());
+        startButton = new JButton("Start");
+        pauseButton = new JButton("Pause");
+        resumeButton = new JButton("Resume");
+        stopButton = new JButton("Stop");
+        resetButton = new JButton("Reset");
+        chooseFolderButton = new JButton("Choose Folder");
+
+        northRow1.add(startButton);
+        northRow1.add(pauseButton);
+        northRow1.add(resumeButton);
+        northRow1.add(stopButton);
+        northRow1.add(resetButton);
+        northRow1.add(chooseFolderButton);
+
+        JPanel northRow2 = new JPanel(new FlowLayout());
+        velocity = new JLabel("Velocity");
+        velocityField = new JTextField(5);
+        dt = new JLabel("dt");
+        dtField = new JTextField(5);
+        TotalTime = new JLabel("Total Time");
+        totalTimeField = new JTextField(5);
+        spacing = new JLabel("Spacing");
+        spacingField = new JTextField(5);
+        Distance = new JLabel("Distance");
+        safeDistanceField = new JTextField(5);
+        areaLength = new JLabel("Area Length");
+        areaLengthField = new JTextField(5);
+        areaWidth = new JLabel("Area Width");
+        areaWidthField = new JTextField(5);
+        applyButton = new JButton("Apply");
+
+        northRow2.add(velocity);
+        northRow2.add(velocityField);
+        northRow2.add(dt);
+        northRow2.add(dtField);
+        northRow2.add(TotalTime);
+        northRow2.add(totalTimeField);
+        northRow2.add(spacing);
+        northRow2.add(spacingField);
+        northRow2.add(Distance);
+        northRow2.add(safeDistanceField);
+        northRow2.add(areaLength);
+        northRow2.add(areaLengthField);
+        northRow2.add(areaWidth);
+        northRow2.add(areaWidthField);
+        northRow2.add(applyButton);
+
+        NORTH.add(northRow1);
+        NORTH.add(northRow2);
+
+        rootPanel.add(NORTH, BorderLayout.NORTH);
+
+        // Center Panel
+        canvasHolder = new JPanel();
+        canvasHolder.setLayout(new BorderLayout());
+        rootPanel.add(canvasHolder, BorderLayout.CENTER);
+
+        // Left Panel
+        leftPanel = new JPanel();
+        leftPanel.setLayout(new GridLayout(0, 2));
+
+        kp = new JLabel("Position Gain (kp)");
+        kpField = new JTextField();
+        kd = new JLabel("Velocity Gain (kd)");
+        kdField = new JTextField();
+        kYaw = new JLabel("Direction Gain (kYaw)");
+        kYawField = new JTextField();
+        kDamp = new JLabel("Angular Damping (kDamp)");
+        kDampField = new JTextField();
+        dragK = new JLabel("Air Drag (dragK)");
+        dragKField = new JTextField();
+        commRange = new JLabel("Range");
+        commonRnageField = new JTextField();
+        pLoss = new JLabel("pLoss");
+        pLossField = new JTextField();
+        obstacleStrength = new JLabel("Obstacle Strength");
+        obstacleStrengthField = new JTextField();
+        Apply2 = new JButton("Apply");
+
+        leftPanel.add(kp);
+        leftPanel.add(kpField);
+        leftPanel.add(kd);
+        leftPanel.add(kdField);
+        leftPanel.add(kYaw);
+        leftPanel.add(kYawField);
+        leftPanel.add(kDamp);
+        leftPanel.add(kDampField);
+        leftPanel.add(dragK);
+        leftPanel.add(dragKField);
+        leftPanel.add(commRange);
+        leftPanel.add(commonRnageField);
+        leftPanel.add(pLoss);
+        leftPanel.add(pLossField);
+        leftPanel.add(obstacleStrength);
+        leftPanel.add(obstacleStrengthField);
+        leftPanel.add(new JLabel("")); // Spacer
+        leftPanel.add(Apply2);
+
+        rootPanel.add(leftPanel, BorderLayout.WEST);
+
+        // Right Panel (Correct initialization for manual build later)
+        rightPanel = new JPanel();
+        simulationStatus = new JLabel("Simulation Status");
+        statusField = new JTextField();
+        timerField = new JTextField(); // Used in constructor manual build
+        collisionPercentage = new JLabel("Collision %");
+        collisionPercentageField = new JTextField();
+        avgSpacing = new JLabel("Avg. Spacing");
+        avgSpacingField = new JTextField();
+        simTimerField = new JTextField();
+
+        rootPanel.add(rightPanel, BorderLayout.EAST);
+
+        // Initialize Timer
+        simTimer = new javax.swing.Timer(50, new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (simulator != null && simulator.isRunning() && !simulator.isPaused()) {
+                    try {
+                        simulator.stepOnce();
+                        if (drawPanel != null) {
+                            drawPanel.repaint();
+                        }
+
+                        // precise text field update
+                        timerField.setText(String.format("%.2f", simulator.getElapsedTime()));
+                        statusField.setText(simulator.isRunning() ? "Running" : "Stopped");
+                        avgSpacingField.setText(String.format("%.2f", simulator.computeAverageSpacing()));
+                        collisionPercentageField.setText(String.format("%.1f%%", simulator.getCollisionPercentage()));
+
+                    } catch (Exception ex) {
+                        ex.printStackTrace();
+                        simTimer.stop();
+                        statusField.setText("Error");
+                    }
+                }
+            }
+        });
     }
 
     public static void main(String[] args) {
