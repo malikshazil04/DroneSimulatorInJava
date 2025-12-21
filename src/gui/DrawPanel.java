@@ -16,6 +16,7 @@ public class DrawPanel extends JPanel {
     private Image grassImage;
     private java.util.HashMap<Integer, Double> droneRotations = new java.util.HashMap<>(); // Per-drone rotation
     private java.util.HashSet<Integer> completedDrones = new java.util.HashSet<>(); // Track completed drones
+    private Integer selectedDroneId = null;
 
     public DrawPanel(Simulator sim) {
         this.sim = sim;
@@ -51,6 +52,10 @@ public class DrawPanel extends JPanel {
 
     public void setSimulator(Simulator sim) {
         this.sim = sim;
+    }
+
+    public void setSelectedDroneId(Integer id) {
+        this.selectedDroneId = id;
     }
 
     @Override
@@ -182,17 +187,41 @@ public class DrawPanel extends JPanel {
                 g2.setTransform(oldTransform);
             }
 
-            // target marker - dark purple, more visible
+            // target marker - Red for selected, Dark Purple for others
             Vector3 t = d.getTarget();
-            int tx = cx + (int) (t.x * scale);
-            int ty = cy - (int) (t.y * scale);
+            boolean isSelected = (selectedDroneId != null && selectedDroneId == d.getId());
 
-            g2.setColor(new Color(75, 0, 130)); // Dark purple (Indigo)
-            g2.setStroke(new BasicStroke(4f)); // Thicker stroke
-            int crossSize = 10; // Bigger crosshair
+            // 3D projection for target (X, Y, Z)
+            int tx = cx + (int) (t.x * scale);
+            int ty = cy - (int) (t.y * scale) - (int) (t.z * heightFactor);
+
+            // ground projection for leader line
+            int groundTx = cx + (int) (t.x * scale);
+            int groundTy = cy - (int) (t.y * scale);
+
+            if (isSelected) {
+                g2.setColor(Color.RED);
+                g2.setStroke(new BasicStroke(5f));
+            } else {
+                g2.setColor(new Color(75, 0, 130)); // Dark purple
+                g2.setStroke(new BasicStroke(3f));
+            }
+
+            // Draw vertical leader line
+            float[] dash = { 5.0f };
+            g2.setStroke(new BasicStroke(1.0f, BasicStroke.CAP_BUTT, BasicStroke.JOIN_MITER, 10.0f, dash, 0.0f));
+            g2.drawLine(groundTx, groundTy, tx, ty);
+
+            // Draw crosshair and circle
+            if (isSelected) {
+                g2.setStroke(new BasicStroke(4f));
+            } else {
+                g2.setStroke(new BasicStroke(3f));
+            }
+
+            int crossSize = isSelected ? 12 : 10;
             g2.drawLine(tx - crossSize, ty, tx + crossSize, ty);
             g2.drawLine(tx, ty - crossSize, tx, ty + crossSize);
-            // Add circle around target for more visibility
             g2.drawOval(tx - 6, ty - 6, 12, 12);
         }
     }

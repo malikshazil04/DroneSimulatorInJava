@@ -61,18 +61,28 @@ public class MainWindow {
     private JLabel collisionPercentage;
     private JTextField simTimerField;
     private JTextField collisionPercentageField;
+    private JLabel totalDronesLabel;
+    private JTextField totalDronesField;
+    private JComboBox<Integer> droneSelectorCombo;
+    private JComboBox<String> swarmControlCombo;
+    private JLabel targetXLabel;
+    private JTextField targetXField;
+    private JLabel targetYLabel;
+    private JTextField targetYField;
+    private JLabel targetZLabel;
+    private JTextField targetZField;
+    private JButton setTargetButton;
     private java.io.File logDirectory = new java.io.File("logs");
     private long startTimeMillis = 0; // Track real wall-clock start time
     private double realTimeElapsed = 0.0; // Real seconds elapsed
 
     public MainWindow() {
+        simulator = buildSimulator(0);
         setupUI();
 
-        simulator = buildSimulator();
         drawPanel = new DrawPanel(simulator);
         canvasHolder.setLayout(new BorderLayout());
         canvasHolder.add(drawPanel, BorderLayout.CENTER);
-        JLabel timerLabel = new JLabel("Timer (s)");
         dtField.setText("0.05");
         totalTimeField.setText("10.0");
         spacingField.setText("3.0");
@@ -89,26 +99,7 @@ public class MainWindow {
         areaWidthField.setText("60.0");
         velocityField.setText("20.0");
 
-        rightPanel.removeAll();
-        rightPanel.setLayout(new GridLayout(4, 2, 5, 5));
-        rightPanel.add(simulationStatus);
-        statusField.setEditable(false);
-        rightPanel.add(statusField);
-        statusField.setText("Stopped");
-        rightPanel.add(timerLabel);
-        simTimerField.setEditable(false);
-        rightPanel.add(simTimerField);
-        simTimerField.setText("0.0");
-
-        rightPanel.add(collisionPercentage);
-        collisionPercentageField.setEditable(false);
-        rightPanel.add(collisionPercentageField);
-        collisionPercentageField.setText("0.0%");
-
-        rightPanel.add(avgSpacing);
-        avgSpacingField.setEditable(false);
-        rightPanel.add(avgSpacingField);
-        avgSpacingField.setText("0.0");
+        // Right Panel is now fully set up in setupUI()
 
         startButton.addActionListener(e -> {
             applyParams(); // Auto-apply right panel params (including Velocity)
@@ -123,8 +114,12 @@ public class MainWindow {
             simTimer.stop();
             statusField.setText("Stopped");
 
-            // rebuild a fresh simulator instance
-            simulator = buildSimulator();
+            int count = 0;
+            try {
+                count = Integer.parseInt(totalDronesField.getText().trim());
+            } catch (Exception ex) {
+            }
+            simulator = buildSimulator(count);
 
             // connect simulator back to panel (you need this setter in DrawPanel)
             drawPanel.setSimulator(simulator);
@@ -203,54 +198,41 @@ public class MainWindow {
         });
     }
 
-    private Core.Simulator buildSimulator() {
+    private Core.Simulator buildSimulator(int droneCount) {
 
         Config config = new Config();
         config.loadFromFile("config.txt");
         Controller controller = new Controller();
         Simulator sim = new Simulator(controller, config, logDirectory);
 
-        Drone d1 = new Drone();
-        d1.setPosition(new Vector3(0, 0, 0));
-        d1.setTarget(new Vector3(40, 0, 15));
-
-        Drone d2 = new Drone();
-        d2.setPosition(new Vector3(1, 0, 0));
-        d2.setTarget(new Vector3(35, 10, 18));
-
-        Drone d3 = new Drone();
-        d3.setPosition(new Vector3(0, 1, 0));
-        d3.setTarget(new Vector3(30, -12, 20));
-
-        Drone d4 = new Drone();
-        d4.setPosition(new Vector3(-1, 0, 0));
-        d4.setTarget(new Vector3(-40, 8, 16));
-
-        Drone d5 = new Drone();
-        d5.setPosition(new Vector3(0, -1, 0));
-        d5.setTarget(new Vector3(-35, -10, 18));
-
-        Drone d6 = new Drone();
-        d6.setPosition(new Vector3(-1, 0, 0));
-        d6.setTarget(new Vector3(-55, 8, 16));
-
-        Drone d7 = new Drone();
-        d7.setPosition(new Vector3(0, -1, 0));
-        d7.setTarget(new Vector3(-25, -10, 18));
-
-        sim.addDrone(d1);
-        sim.addDrone(d2);
-        sim.addDrone(d3);
-        sim.addDrone(d4);
-        sim.addDrone(d5);
-        sim.addDrone(d6);
-        sim.addDrone(d7);
+        for (int i = 0; i < droneCount; i++) {
+            Drone d = new Drone();
+            // Spread drones out slightly at start
+            double offsetX = (i % 5) * 2.0 - 4.0;
+            double offsetY = (i / 5) * 2.0 - 4.0;
+            d.setPosition(new Vector3(offsetX, offsetY, 0));
+            // Default targets spread out
+            d.setTarget(new Vector3(offsetX * 10, offsetY * 10, 15 + i));
+            sim.addDrone(d);
+        }
 
         return sim;
     }
 
     private void applyParams() {
         try {
+            // New logic: Drone Count Rebuild FIRST
+            int targetDroneCount = Integer.parseInt(totalDronesField.getText().trim());
+            if (simulator.getDrones().size() != targetDroneCount) {
+                simulator.stopSim();
+                simTimer.stop();
+                simulator = buildSimulator(targetDroneCount);
+                drawPanel.setSimulator(simulator);
+                updateDroneCombo();
+                drawPanel.repaint();
+                simulator.getLogger().log("Simulator rebuilt with " + targetDroneCount + " drones.");
+            }
+
             double dt = Double.parseDouble(dtField.getText().trim());
             double totalTime = Double.parseDouble(totalTimeField.getText().trim());
             double spacing = Double.parseDouble(spacingField.getText().trim());
@@ -271,7 +253,9 @@ public class MainWindow {
             simulator.getLogger().log("Params applied");
 
         } catch (Exception ex) {
-            simulator.getLogger().log("Invalid params: " + ex.getMessage() + "\n");
+            if (simulator != null) {
+                simulator.getLogger().log("Invalid params: " + ex.getMessage() + "\n");
+            }
         }
     }
 
@@ -295,6 +279,7 @@ public class MainWindow {
             simulator.getConfig().dragK = dragK;
             simulator.getCommunication().setCommRange(commRange);
             simulator.getCommunication().setPLoss(pLoss);
+            simulator.getObstacleManager().setStrength(obsStrength);
             simulator.getLogger().log("Left params applied");
         } catch (Exception ex) {
             simulator.getLogger().log("Invalid left params: " + ex.getMessage());
@@ -304,41 +289,44 @@ public class MainWindow {
     private void setupUI() {
         rootPanel = new JPanel();
         rootPanel.setLayout(new BorderLayout());
+        rootPanel.setBackground(UIHelpers.SKY_BLUE);
 
         // NORTH Panel
         NORTH = new JPanel();
         NORTH.setLayout(new GridLayout(2, 1));
+        NORTH.setBackground(UIHelpers.SKY_BLUE);
 
         JPanel northRow1 = new JPanel(new FlowLayout());
+        northRow1.setBackground(UIHelpers.SKY_BLUE);
         startButton = new JButton("Start");
-        startButton.setBackground(new Color(46, 204, 113)); // Green
+        startButton.setBackground(new Color(46, 204, 113));
         startButton.setForeground(Color.WHITE);
-        startButton.setFont(new Font("Arial", Font.BOLD, 14));
+        UIHelpers.styleButton(startButton);
 
         pauseButton = new JButton("Pause");
-        pauseButton.setBackground(new Color(241, 196, 15)); // Yellow
+        pauseButton.setBackground(new Color(241, 196, 15));
         pauseButton.setForeground(Color.WHITE);
-        pauseButton.setFont(new Font("Arial", Font.BOLD, 14));
+        UIHelpers.styleButton(pauseButton);
 
         resumeButton = new JButton("Resume");
-        resumeButton.setBackground(new Color(52, 152, 219)); // Blue
+        resumeButton.setBackground(new Color(52, 152, 219));
         resumeButton.setForeground(Color.WHITE);
-        resumeButton.setFont(new Font("Arial", Font.BOLD, 14));
+        UIHelpers.styleButton(resumeButton);
 
         stopButton = new JButton("Stop");
-        stopButton.setBackground(new Color(231, 76, 60)); // Red
+        stopButton.setBackground(new Color(231, 76, 60));
         stopButton.setForeground(Color.WHITE);
-        stopButton.setFont(new Font("Arial", Font.BOLD, 14));
+        UIHelpers.styleButton(stopButton);
 
         resetButton = new JButton("Reset");
-        resetButton.setBackground(new Color(155, 89, 182)); // Purple
+        resetButton.setBackground(new Color(155, 89, 182));
         resetButton.setForeground(Color.WHITE);
-        resetButton.setFont(new Font("Arial", Font.BOLD, 14));
+        UIHelpers.styleButton(resetButton);
 
-        chooseFolderButton = new JButton("Choose Folder");
-        chooseFolderButton.setBackground(new Color(52, 73, 94)); // Dark Blue
+        chooseFolderButton = new JButton("Folder");
+        chooseFolderButton.setBackground(new Color(52, 73, 94));
         chooseFolderButton.setForeground(Color.WHITE);
-        chooseFolderButton.setFont(new Font("Arial", Font.BOLD, 14));
+        UIHelpers.styleButton(chooseFolderButton);
 
         northRow1.add(startButton);
         northRow1.add(pauseButton);
@@ -348,52 +336,53 @@ public class MainWindow {
         northRow1.add(chooseFolderButton);
 
         JPanel northRow2 = new JPanel(new FlowLayout());
+        northRow2.setBackground(UIHelpers.SKY_BLUE);
         velocity = new JLabel("Velocity");
-        velocity.setForeground(new Color(231, 76, 60));
-        velocity.setFont(new Font("Arial", Font.BOLD, 12));
+        UIHelpers.styleLabel(velocity);
         velocityField = new JTextField(5);
-        velocityField.setBackground(new Color(255, 224, 230));
+        UIHelpers.styleTextField(velocityField);
 
         dt = new JLabel("dt");
-        dt.setForeground(new Color(46, 204, 113));
-        dt.setFont(new Font("Arial", Font.BOLD, 12));
+        UIHelpers.styleLabel(dt);
         dtField = new JTextField(5);
-        dtField.setBackground(new Color(230, 255, 237));
+        UIHelpers.styleTextField(dtField);
 
         TotalTime = new JLabel("Total Time");
-        TotalTime.setForeground(new Color(52, 152, 219));
-        TotalTime.setFont(new Font("Arial", Font.BOLD, 12));
+        UIHelpers.styleLabel(TotalTime);
         totalTimeField = new JTextField(5);
-        totalTimeField.setBackground(new Color(227, 242, 253));
+        UIHelpers.styleTextField(totalTimeField);
 
         spacing = new JLabel("Spacing");
-        spacing.setForeground(new Color(155, 89, 182));
-        spacing.setFont(new Font("Arial", Font.BOLD, 12));
+        UIHelpers.styleLabel(spacing);
         spacingField = new JTextField(5);
-        spacingField.setBackground(new Color(243, 235, 248));
+        UIHelpers.styleTextField(spacingField);
 
         Distance = new JLabel("Distance");
-        Distance.setForeground(new Color(230, 126, 34));
-        Distance.setFont(new Font("Arial", Font.BOLD, 12));
+        UIHelpers.styleLabel(Distance);
         safeDistanceField = new JTextField(5);
-        safeDistanceField.setBackground(new Color(255, 243, 224));
+        UIHelpers.styleTextField(safeDistanceField);
 
-        areaLength = new JLabel("Area Length");
-        areaLength.setForeground(new Color(26, 188, 156));
-        areaLength.setFont(new Font("Arial", Font.BOLD, 12));
+        areaLength = new JLabel("Length");
+        UIHelpers.styleLabel(areaLength);
         areaLengthField = new JTextField(5);
-        areaLengthField.setBackground(new Color(224, 247, 242));
+        UIHelpers.styleTextField(areaLengthField);
 
-        areaWidth = new JLabel("Area Width");
-        areaWidth.setForeground(new Color(241, 196, 15));
-        areaWidth.setFont(new Font("Arial", Font.BOLD, 12));
+        areaWidth = new JLabel("Width");
+        UIHelpers.styleLabel(areaWidth);
         areaWidthField = new JTextField(5);
-        areaWidthField.setBackground(new Color(255, 249, 219));
+        UIHelpers.styleTextField(areaWidthField);
+
+        totalDronesLabel = new JLabel("Drones");
+        UIHelpers.styleLabel(totalDronesLabel);
+        totalDronesField = new JTextField(5);
+        UIHelpers.styleTextField(totalDronesField);
+        totalDronesField.setText("0");
+        totalDronesField.addActionListener(e -> applyParams());
 
         applyButton = new JButton("Apply");
         applyButton.setBackground(new Color(26, 188, 156));
         applyButton.setForeground(Color.WHITE);
-        applyButton.setFont(new Font("Arial", Font.BOLD, 14));
+        UIHelpers.styleButton(applyButton);
 
         northRow2.add(velocity);
         northRow2.add(velocityField);
@@ -409,6 +398,8 @@ public class MainWindow {
         northRow2.add(areaLengthField);
         northRow2.add(areaWidth);
         northRow2.add(areaWidthField);
+        northRow2.add(totalDronesLabel);
+        northRow2.add(totalDronesField);
         northRow2.add(applyButton);
 
         NORTH.add(northRow1);
@@ -421,63 +412,55 @@ public class MainWindow {
         canvasHolder.setLayout(new BorderLayout());
         rootPanel.add(canvasHolder, BorderLayout.CENTER);
 
-        // Left Panel
         leftPanel = new JPanel();
-        leftPanel.setLayout(new GridLayout(0, 2));
-        leftPanel.setBackground(new Color(236, 240, 241));
+        leftPanel.setLayout(new GridLayout(0, 2, 5, 5));
+        leftPanel.setBackground(UIHelpers.SKY_BLUE);
+        leftPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         kp = new JLabel("Position Gain (kp)");
-        kp.setForeground(new Color(192, 57, 43));
-        kp.setFont(new Font("Arial", Font.BOLD, 11));
+        UIHelpers.styleLabel(kp);
         kpField = new JTextField();
-        kpField.setBackground(new Color(255, 236, 235));
+        UIHelpers.styleTextField(kpField);
 
         kd = new JLabel("Velocity Gain (kd)");
-        kd.setForeground(new Color(39, 174, 96));
-        kd.setFont(new Font("Arial", Font.BOLD, 11));
+        UIHelpers.styleLabel(kd);
         kdField = new JTextField();
-        kdField.setBackground(new Color(232, 248, 239));
+        UIHelpers.styleTextField(kdField);
 
         kYaw = new JLabel("Direction Gain (kYaw)");
-        kYaw.setForeground(new Color(41, 128, 185));
-        kYaw.setFont(new Font("Arial", Font.BOLD, 11));
+        UIHelpers.styleLabel(kYaw);
         kYawField = new JTextField();
-        kYawField.setBackground(new Color(232, 243, 250));
+        UIHelpers.styleTextField(kYawField);
 
         kDamp = new JLabel("Angular Damping (kDamp)");
-        kDamp.setForeground(new Color(142, 68, 173));
-        kDamp.setFont(new Font("Arial", Font.BOLD, 11));
+        UIHelpers.styleLabel(kDamp);
         kDampField = new JTextField();
-        kDampField.setBackground(new Color(244, 236, 249));
+        UIHelpers.styleTextField(kDampField);
 
         dragK = new JLabel("Air Drag (dragK)");
-        dragK.setForeground(new Color(211, 84, 0));
-        dragK.setFont(new Font("Arial", Font.BOLD, 11));
+        UIHelpers.styleLabel(dragK);
         dragKField = new JTextField();
-        dragKField.setBackground(new Color(255, 243, 230));
+        UIHelpers.styleTextField(dragKField);
 
         commRange = new JLabel("Range");
-        commRange.setForeground(new Color(22, 160, 133));
-        commRange.setFont(new Font("Arial", Font.BOLD, 11));
+        UIHelpers.styleLabel(commRange);
         commonRnageField = new JTextField();
-        commonRnageField.setBackground(new Color(227, 244, 241));
+        UIHelpers.styleTextField(commonRnageField);
 
         pLoss = new JLabel("pLoss");
-        pLoss.setForeground(new Color(243, 156, 18));
-        pLoss.setFont(new Font("Arial", Font.BOLD, 11));
+        UIHelpers.styleLabel(pLoss);
         pLossField = new JTextField();
-        pLossField.setBackground(new Color(255, 247, 230));
+        UIHelpers.styleTextField(pLossField);
 
         obstacleStrength = new JLabel("Obstacle Strength");
-        obstacleStrength.setForeground(new Color(44, 62, 80));
-        obstacleStrength.setFont(new Font("Arial", Font.BOLD, 11));
+        UIHelpers.styleLabel(obstacleStrength);
         obstacleStrengthField = new JTextField();
-        obstacleStrengthField.setBackground(new Color(236, 240, 241));
+        UIHelpers.styleTextField(obstacleStrengthField);
 
         Apply2 = new JButton("Apply");
         Apply2.setBackground(new Color(41, 128, 185));
         Apply2.setForeground(Color.WHITE);
-        Apply2.setFont(new Font("Arial", Font.BOLD, 14));
+        UIHelpers.styleButton(Apply2);
 
         leftPanel.add(kp);
         leftPanel.add(kpField);
@@ -502,36 +485,147 @@ public class MainWindow {
 
         // Right Panel (Correct initialization for manual build later)
         rightPanel = new JPanel();
-        rightPanel.setBackground(new Color(250, 250, 250));
+        rightPanel.setLayout(new GridLayout(0, 2, 5, 5));
+        rightPanel.setBackground(UIHelpers.SKY_BLUE);
+        rightPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
-        simulationStatus = new JLabel("Simulation Status");
-        simulationStatus.setForeground(new Color(231, 76, 60));
-        simulationStatus.setFont(new Font("Arial", Font.BOLD, 13));
+        simulationStatus = new JLabel("Status");
+        UIHelpers.styleLabel(simulationStatus);
         statusField = new JTextField();
-        statusField.setBackground(new Color(255, 235, 235));
-        statusField.setForeground(new Color(192, 57, 43));
-        statusField.setFont(new Font("Arial", Font.BOLD, 14));
+        UIHelpers.styleTextField(statusField);
+        statusField.setForeground(UIHelpers.TEXT_DARK);
 
-        simTimerField = new JTextField(); // Used in constructor manual build
-        simTimerField.setBackground(new Color(244, 236, 249)); // Purple tint for timer
-        simTimerField.setForeground(new Color(142, 68, 173));
-        simTimerField.setFont(new Font("Arial", Font.BOLD, 14));
+        JLabel timerLabel = new JLabel("Timer (s)");
+        UIHelpers.styleLabel(timerLabel);
+        simTimerField = new JTextField();
+        UIHelpers.styleTextField(simTimerField);
+        simTimerField.setForeground(UIHelpers.TEXT_DARK);
 
-        collisionPercentage = new JLabel("Collision %");
-        collisionPercentage.setForeground(new Color(230, 126, 34));
-        collisionPercentage.setFont(new Font("Arial", Font.BOLD, 13));
+        collisionPercentage = new JLabel("Collisions");
+        UIHelpers.styleLabel(collisionPercentage);
         collisionPercentageField = new JTextField();
-        collisionPercentageField.setBackground(new Color(255, 243, 224));
-        collisionPercentageField.setForeground(new Color(211, 84, 0));
-        collisionPercentageField.setFont(new Font("Arial", Font.BOLD, 14));
+        UIHelpers.styleTextField(collisionPercentageField);
+        collisionPercentageField.setForeground(UIHelpers.TEXT_DARK);
 
-        avgSpacing = new JLabel("Avg. Spacing");
-        avgSpacing.setForeground(new Color(52, 152, 219));
-        avgSpacing.setFont(new Font("Arial", Font.BOLD, 13));
+        avgSpacing = new JLabel("Spacing");
+        UIHelpers.styleLabel(avgSpacing);
         avgSpacingField = new JTextField();
-        avgSpacingField.setBackground(new Color(232, 243, 250));
-        avgSpacingField.setForeground(new Color(41, 128, 185));
-        avgSpacingField.setFont(new Font("Arial", Font.BOLD, 14));
+        UIHelpers.styleTextField(avgSpacingField);
+        avgSpacingField.setForeground(UIHelpers.TEXT_DARK);
+
+        rightPanel.add(simulationStatus);
+        rightPanel.add(statusField);
+        rightPanel.add(timerLabel);
+        rightPanel.add(simTimerField);
+        rightPanel.add(collisionPercentage);
+        rightPanel.add(collisionPercentageField);
+        rightPanel.add(avgSpacing);
+        rightPanel.add(avgSpacingField);
+
+        // --- Drone Selector & Target config ---
+        swarmControlCombo = new JComboBox<>(new String[] { "Individual Drone", "All Drones" });
+        UIHelpers.styleComboBox(swarmControlCombo);
+        droneSelectorCombo = new JComboBox<>();
+        UIHelpers.styleComboBox(droneSelectorCombo);
+        targetXField = new JTextField();
+        targetYField = new JTextField();
+        targetZField = new JTextField();
+        setTargetButton = new JButton("Set Target");
+        UIHelpers.styleTextField(targetXField);
+        UIHelpers.styleTextField(targetYField);
+        UIHelpers.styleTextField(targetZField);
+        UIHelpers.styleButton(setTargetButton);
+
+        JLabel scLabel = new JLabel("Swarm Control");
+        UIHelpers.styleLabel(scLabel);
+        rightPanel.add(scLabel);
+        rightPanel.add(swarmControlCombo);
+
+        JLabel dsLabel = new JLabel("Select Drone");
+        UIHelpers.styleLabel(dsLabel);
+        rightPanel.add(dsLabel);
+        rightPanel.add(droneSelectorCombo);
+
+        targetXLabel = new JLabel("Target X");
+        UIHelpers.styleLabel(targetXLabel);
+        rightPanel.add(targetXLabel);
+        rightPanel.add(targetXField);
+
+        targetYLabel = new JLabel("Target Y");
+        UIHelpers.styleLabel(targetYLabel);
+        rightPanel.add(targetYLabel);
+        rightPanel.add(targetYField);
+
+        targetZLabel = new JLabel("Target Z");
+        UIHelpers.styleLabel(targetZLabel);
+        rightPanel.add(targetZLabel);
+        rightPanel.add(targetZField);
+
+        rightPanel.add(new JLabel(""));
+        rightPanel.add(setTargetButton);
+
+        updateDroneCombo();
+
+        // Listener for mode change
+        swarmControlCombo.addActionListener(e -> {
+            boolean individual = "Individual Drone".equals(swarmControlCombo.getSelectedItem());
+            droneSelectorCombo.setEnabled(individual);
+        });
+
+        // Listener for drone selection
+        droneSelectorCombo.addActionListener(e -> {
+            Integer selectedId = (Integer) droneSelectorCombo.getSelectedItem();
+            if (drawPanel != null) {
+                drawPanel.setSelectedDroneId(selectedId);
+                drawPanel.repaint();
+            }
+            if (selectedId != null && simulator != null) {
+                for (Drone d : simulator.getDrones()) {
+                    if (d.getId() == selectedId) {
+                        Vector3 target = d.getTarget();
+                        targetXField.setText(String.format("%.2f", target.x));
+                        targetYField.setText(String.format("%.2f", target.y));
+                        targetZField.setText(String.format("%.2f", target.z));
+                        break;
+                    }
+                }
+            }
+        });
+
+        // Listener for setting target
+        setTargetButton.addActionListener(e -> {
+            if (simulator == null)
+                return;
+            try {
+                double x = Double.parseDouble(targetXField.getText().trim());
+                double y = Double.parseDouble(targetYField.getText().trim());
+                double z = Double.parseDouble(targetZField.getText().trim());
+                Vector3 newTarget = new Vector3(x, y, z);
+
+                String mode = (String) swarmControlCombo.getSelectedItem();
+                if ("All Drones".equals(mode)) {
+                    for (Drone d : simulator.getDrones()) {
+                        d.setTarget(newTarget);
+                    }
+                    simulator.getLogger().log("Updated Target for ALL drones to: " + x + "," + y + "," + z);
+                } else {
+                    Integer selectedId = (Integer) droneSelectorCombo.getSelectedItem();
+                    if (selectedId != null) {
+                        for (Drone d : simulator.getDrones()) {
+                            if (d.getId() == selectedId) {
+                                d.setTarget(newTarget);
+                                simulator.getLogger()
+                                        .log("Updated Target for Drone " + selectedId + " to: " + x + "," + y + ","
+                                                + z);
+                                break;
+                            }
+                        }
+                    }
+                }
+            } catch (Exception ex) {
+                simulator.getLogger().log("Invalid target coordinates: " + ex.getMessage());
+            }
+        });
 
         rootPanel.add(rightPanel, BorderLayout.EAST);
 
@@ -565,6 +659,18 @@ public class MainWindow {
                 }
             }
         });
+    }
+
+    private void updateDroneCombo() {
+        if (droneSelectorCombo == null || simulator == null)
+            return;
+        droneSelectorCombo.removeAllItems();
+        for (Drone d : simulator.getDrones()) {
+            droneSelectorCombo.addItem(d.getId());
+        }
+        if (drawPanel != null) {
+            drawPanel.setSelectedDroneId((Integer) droneSelectorCombo.getSelectedItem());
+        }
     }
 
     public static void main(String[] args) {
