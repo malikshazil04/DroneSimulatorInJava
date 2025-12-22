@@ -58,6 +58,14 @@ public class DrawPanel extends JPanel {
         this.selectedDroneId = id;
     }
 
+    public double getScale() {
+        return scale;
+    }
+
+    public double getHeightFactor() {
+        return heightFactor;
+    }
+
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -202,6 +210,9 @@ public class DrawPanel extends JPanel {
             if (isSelected) {
                 g2.setColor(Color.RED);
                 g2.setStroke(new BasicStroke(5f));
+
+                // Selection Highlight Circle around drone
+                g2.drawOval(x - size - 4, y - size - 4, (size + 4) * 2, (size + 4) * 2);
             } else {
                 g2.setColor(new Color(75, 0, 130)); // Dark purple
                 g2.setStroke(new BasicStroke(3f));
@@ -215,8 +226,10 @@ public class DrawPanel extends JPanel {
             // Draw crosshair and circle
             if (isSelected) {
                 g2.setStroke(new BasicStroke(4f));
+                g2.setColor(Color.RED);
             } else {
                 g2.setStroke(new BasicStroke(3f));
+                g2.setColor(new Color(75, 0, 130)); // Dark purple
             }
 
             int crossSize = isSelected ? 12 : 10;

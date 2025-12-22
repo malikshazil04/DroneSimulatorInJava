@@ -63,8 +63,7 @@ public class MainWindow {
     private JTextField collisionPercentageField;
     private JLabel totalDronesLabel;
     private JTextField totalDronesField;
-    private JComboBox<Integer> droneSelectorCombo;
-    private JComboBox<String> swarmControlCombo;
+    private JComboBox<String> targetSelectCombo;
     private JLabel targetXLabel;
     private JTextField targetXField;
     private JLabel targetYLabel;
@@ -72,6 +71,7 @@ public class MainWindow {
     private JLabel targetZLabel;
     private JTextField targetZField;
     private JButton setTargetButton;
+    private JCheckBox formationEnabledCheck;
     private java.io.File logDirectory = new java.io.File("logs");
     private long startTimeMillis = 0; // Track real wall-clock start time
     private double realTimeElapsed = 0.0; // Real seconds elapsed
@@ -169,6 +169,36 @@ public class MainWindow {
 
         applyButton.addActionListener(e -> applyParams());
         Apply2.addActionListener(e -> applyLeftParams());
+
+        // Mouse Listener for target setting
+        drawPanel.addMouseListener(new java.awt.event.MouseAdapter() {
+            @Override
+            public void mousePressed(java.awt.event.MouseEvent e) {
+                if (simulator == null)
+                    return;
+
+                if (SwingUtilities.isLeftMouseButton(e) || SwingUtilities.isRightMouseButton(e)) {
+                    // Set Target
+                    int mouseX = e.getX();
+                    int mouseY = e.getY();
+
+                    int cx = drawPanel.getWidth() / 2;
+                    int cy = drawPanel.getHeight() / 2;
+                    double scale = drawPanel.getScale();
+
+                    double worldX = (mouseX - cx) / scale;
+                    double worldY = (cy - mouseY) / scale;
+
+                    targetXField.setText(String.format("%.2f", worldX));
+                    targetYField.setText(String.format("%.2f", worldY));
+                    if (targetZField.getText().isEmpty())
+                        targetZField.setText("10.0");
+
+                    setTargetButton.doClick();
+                }
+            }
+        });
+
         simTimerField.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -522,11 +552,23 @@ public class MainWindow {
         rightPanel.add(avgSpacing);
         rightPanel.add(avgSpacingField);
 
-        // --- Drone Selector & Target config ---
-        swarmControlCombo = new JComboBox<>(new String[] { "Individual Drone", "All Drones" });
-        UIHelpers.styleComboBox(swarmControlCombo);
-        droneSelectorCombo = new JComboBox<>();
-        UIHelpers.styleComboBox(droneSelectorCombo);
+        formationEnabledCheck = new JCheckBox("Enable Formation", true);
+        formationEnabledCheck.setBackground(UIHelpers.SKY_BLUE);
+        formationEnabledCheck.setFont(UIHelpers.LABEL_FONT);
+        formationEnabledCheck.setForeground(UIHelpers.TEXT_DARK);
+        // needs styleCheckBox
+        formationEnabledCheck.addActionListener(e -> {
+            if (simulator != null) {
+                simulator.setFormationEnabled(formationEnabledCheck.isSelected());
+                simulator.getLogger().log("Formation " + (formationEnabledCheck.isSelected() ? "Enabled" : "Disabled"));
+            }
+        });
+        rightPanel.add(new JLabel(""));
+        rightPanel.add(formationEnabledCheck);
+
+        // --- Unified Target selection ---
+        targetSelectCombo = new JComboBox<>();
+        UIHelpers.styleComboBox(targetSelectCombo);
         targetXField = new JTextField();
         targetYField = new JTextField();
         targetZField = new JTextField();
@@ -536,15 +578,10 @@ public class MainWindow {
         UIHelpers.styleTextField(targetZField);
         UIHelpers.styleButton(setTargetButton);
 
-        JLabel scLabel = new JLabel("Swarm Control");
-        UIHelpers.styleLabel(scLabel);
-        rightPanel.add(scLabel);
-        rightPanel.add(swarmControlCombo);
-
-        JLabel dsLabel = new JLabel("Select Drone");
-        UIHelpers.styleLabel(dsLabel);
-        rightPanel.add(dsLabel);
-        rightPanel.add(droneSelectorCombo);
+        JLabel tsLabel = new JLabel("Target for:");
+        UIHelpers.styleLabel(tsLabel);
+        rightPanel.add(tsLabel);
+        rightPanel.add(targetSelectCombo);
 
         targetXLabel = new JLabel("Target X");
         UIHelpers.styleLabel(targetXLabel);
@@ -566,30 +603,33 @@ public class MainWindow {
 
         updateDroneCombo();
 
-        // Listener for mode change
-        swarmControlCombo.addActionListener(e -> {
-            boolean individual = "Individual Drone".equals(swarmControlCombo.getSelectedItem());
-            droneSelectorCombo.setEnabled(individual);
-        });
+        // Listener for drone selection in combo
+        targetSelectCombo.addActionListener(e -> {
+            String selected = (String) targetSelectCombo.getSelectedItem();
+            if (selected == null || drawPanel == null)
+                return;
 
-        // Listener for drone selection
-        droneSelectorCombo.addActionListener(e -> {
-            Integer selectedId = (Integer) droneSelectorCombo.getSelectedItem();
-            if (drawPanel != null) {
-                drawPanel.setSelectedDroneId(selectedId);
-                drawPanel.repaint();
-            }
-            if (selectedId != null && simulator != null) {
-                for (Drone d : simulator.getDrones()) {
-                    if (d.getId() == selectedId) {
-                        Vector3 target = d.getTarget();
-                        targetXField.setText(String.format("%.2f", target.x));
-                        targetYField.setText(String.format("%.2f", target.y));
-                        targetZField.setText(String.format("%.2f", target.z));
-                        break;
+            if (selected.equals("All Drones")) {
+                drawPanel.setSelectedDroneId(null);
+            } else if (selected.startsWith("Drone ")) {
+                try {
+                    int id = Integer.parseInt(selected.substring(6));
+                    drawPanel.setSelectedDroneId(id);
+                    if (simulator != null) {
+                        for (Drone d : simulator.getDrones()) {
+                            if (d.getId() == id) {
+                                Vector3 target = d.getTarget();
+                                targetXField.setText(String.format("%.2f", target.x));
+                                targetYField.setText(String.format("%.2f", target.y));
+                                targetZField.setText(String.format("%.2f", target.z));
+                                break;
+                            }
+                        }
                     }
+                } catch (Exception ex) {
                 }
             }
+            drawPanel.repaint();
         });
 
         // Listener for setting target
@@ -602,23 +642,21 @@ public class MainWindow {
                 double z = Double.parseDouble(targetZField.getText().trim());
                 Vector3 newTarget = new Vector3(x, y, z);
 
-                String mode = (String) swarmControlCombo.getSelectedItem();
-                if ("All Drones".equals(mode)) {
+                String selected = (String) targetSelectCombo.getSelectedItem();
+                if ("All Drones".equals(selected)) {
                     for (Drone d : simulator.getDrones()) {
                         d.setTarget(newTarget);
                     }
                     simulator.getLogger().log("Updated Target for ALL drones to: " + x + "," + y + "," + z);
-                } else {
-                    Integer selectedId = (Integer) droneSelectorCombo.getSelectedItem();
-                    if (selectedId != null) {
-                        for (Drone d : simulator.getDrones()) {
-                            if (d.getId() == selectedId) {
-                                d.setTarget(newTarget);
-                                simulator.getLogger()
-                                        .log("Updated Target for Drone " + selectedId + " to: " + x + "," + y + ","
-                                                + z);
-                                break;
-                            }
+                } else if (selected != null && selected.startsWith("Drone ")) {
+                    int id = Integer.parseInt(selected.substring(6));
+                    for (Drone d : simulator.getDrones()) {
+                        if (d.getId() == id) {
+                            d.setTarget(newTarget);
+                            simulator.getLogger()
+                                    .log("Updated Target for Drone " + id + " to: " + x + "," + y + ","
+                                            + z);
+                            break;
                         }
                     }
                 }
@@ -629,47 +667,42 @@ public class MainWindow {
 
         rootPanel.add(rightPanel, BorderLayout.EAST);
 
-        // Initialize Timer
-        simTimer = new Timer(50, new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if (simulator != null && simulator.isRunning() && !simulator.isPaused()) {
-                    try {
-                        simulator.stepOnce();
-                        if (drawPanel != null) {
-                            drawPanel.repaint();
-                        }
+        // Initialize Timer for UI REFRESH (Visuals and labels)
+        // Note: Simulation now runs in its own thread in Simulator.java
+        simTimer = new Timer(50, e -> {
+            if (simulator != null) {
+                if (drawPanel != null) {
+                    drawPanel.repaint();
+                }
 
-                        // Calculate real-time elapsed (in seconds)
-                        if (startTimeMillis > 0) {
-                            realTimeElapsed = (System.currentTimeMillis() - startTimeMillis) / 1000.0;
-                        }
-
-                        // Update UI with real time (not simulation time)
-                        simTimerField.setText(String.format("%.2f", realTimeElapsed));
-                        statusField.setText(simulator.isRunning() ? "Running" : "Stopped");
-                        avgSpacingField.setText(String.format("%.2f", simulator.computeAverageSpacing()));
-                        collisionPercentageField.setText(String.format("%.1f%%", simulator.getCollisionPercentage()));
-
-                    } catch (Exception ex) {
-                        ex.printStackTrace();
-                        simTimer.stop();
-                        statusField.setText("Error");
+                if (simulator.isRunning() && !simulator.isPaused()) {
+                    if (startTimeMillis > 0) {
+                        realTimeElapsed = (System.currentTimeMillis() - startTimeMillis) / 1000.0;
                     }
+                    simTimerField.setText(String.format("%.2f", realTimeElapsed));
+                    statusField.setText("Running");
+                    avgSpacingField.setText(String.format("%.2f", simulator.computeAverageSpacing()));
+                    collisionPercentageField.setText(String.format("%.1f%%", simulator.getCollisionPercentage()));
+                } else if (simulator.isPaused()) {
+                    statusField.setText("Paused");
+                } else {
+                    statusField.setText("Stopped");
+                    simTimer.stop();
                 }
             }
         });
     }
 
     private void updateDroneCombo() {
-        if (droneSelectorCombo == null || simulator == null)
+        if (targetSelectCombo == null || simulator == null)
             return;
-        droneSelectorCombo.removeAllItems();
+        targetSelectCombo.removeAllItems();
+        targetSelectCombo.addItem("All Drones");
         for (Drone d : simulator.getDrones()) {
-            droneSelectorCombo.addItem(d.getId());
+            targetSelectCombo.addItem("Drone " + d.getId());
         }
         if (drawPanel != null) {
-            drawPanel.setSelectedDroneId((Integer) droneSelectorCombo.getSelectedItem());
+            drawPanel.setSelectedDroneId(null);
         }
     }
 

@@ -24,13 +24,12 @@ public void setkDamp(double kDamp) {
 
 public Vector3 computeThrust(Drone d, Vector3 target, Vector3 gravity) {
     Vector3 ePos = target.sub(d.getPosition());
-    Vector3 eVel = d.getVelocity().scale(-1);       
-    // CEP: a_d = kp*e_p + kd*e_v + g   where g = [0,0,-9.81]
+    Vector3 eVel = d.getVelocity().scale(-1);
     Vector3 g = (gravity != null) ? gravity : new Vector3(0, 0, -9.81);
     Vector3 accDesired = ePos.scale(kp).add(eVel.scale(kd)).add(g);
-    // thrust in world frame: T = m * a_d
     return accDesired.scale(d.getMass());
 }
+
 public Vector3 computeTorque(Drone d) {
     Vector3 dir = d.getTarget().sub(d.getPosition());
     if (dir.magnitude() < 1e-9) return new Vector3(0, 0, 0);

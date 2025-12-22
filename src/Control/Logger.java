@@ -1,15 +1,15 @@
 package Control;
 
-import Core.Config;
-
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.StandardOpenOption;
+import Core.Config;
 
 public class Logger {
     private final File directory;
-    private final FileWriter logWriter;
-    private final FileWriter metricsWriter;
+    private final File logFile;
+    private final File metricsFile;
 
     public Logger(File directory) {
         if (directory == null) {
@@ -19,11 +19,15 @@ public class Logger {
         if (!directory.exists()) {
             directory.mkdirs();
         }
+        this.logFile = new File(directory, "simulation.txt");
+        this.metricsFile = new File(directory, "metrics.txt");
+
+        // Clear metrics file on start
         try {
-            logWriter = new FileWriter(new File(directory, "simulation.txt"), true);
-            metricsWriter = new FileWriter(new File(directory, "metrics.txt"), false);
+            Files.write(metricsFile.toPath(), new byte[0], StandardOpenOption.CREATE,
+                    StandardOpenOption.TRUNCATE_EXISTING);
         } catch (IOException e) {
-            throw new RuntimeException("Cannot create output files");
+            System.err.println("Failed to initialize metrics file: " + e.getMessage());
         }
     }
 
@@ -38,10 +42,10 @@ public class Logger {
         System.out.println(message);
 
         try {
-            logWriter.write(message + "\n");
-            logWriter.flush();
+            Files.write(logFile.toPath(), (message + "\n").getBytes(),
+                    StandardOpenOption.CREATE, StandardOpenOption.APPEND);
         } catch (IOException e) {
-            System.out.println("Logger write failed");
+            System.err.println("Logger write failed: " + e.getMessage());
         }
     }
 
@@ -50,10 +54,10 @@ public class Logger {
             return;
 
         try {
-            metricsWriter.write(line + "\n");
-            metricsWriter.flush();
+            Files.write(metricsFile.toPath(), (line + "\n").getBytes(),
+                    StandardOpenOption.CREATE, StandardOpenOption.APPEND);
         } catch (IOException e) {
-            System.out.println("metrics write failed");
+            System.err.println("Metrics write failed: " + e.getMessage());
         }
     }
 
@@ -69,13 +73,6 @@ public class Logger {
     }
 
     public void close() {
-        try {
-            if (logWriter != null)
-                logWriter.close();
-            if (metricsWriter != null)
-                metricsWriter.close();
-        } catch (IOException e) {
-            System.out.println("logger close failed");
-        }
+        // No persistent writers to close with Files.write approach
     }
 }

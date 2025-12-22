@@ -10,12 +10,11 @@ public class Drone {
     private Vector3 acceleration;
     private double mass;
     private Vector3 target;
-    // -------- rotational state (NEW) --------
-    private Matrix3 rotation; // R
-    private Vector3 omega; // ω (rad/s)
-    private Vector3 alpha; // ω̇ (rad/s^2)
+    private Matrix3 rotation;
+    private Vector3 omega;
+    private Vector3 alpha;
     private double inertia;
-
+    private double maxSpeed = 20.0;
     public Drone() {
         this.id = nextId++;
         this.position = new Vector3(0, 0, 0);
@@ -125,6 +124,13 @@ public class Drone {
             throw new IllegalArgumentException("inertia must be positive");
         this.inertia = inertia;
     }
+    public void setMaxSpeed(double s) {
+        if (s <= 0)
+            throw new IllegalArgumentException("maxSpeed must be positive");
+        this.maxSpeed = s;
+    }
+
+
 
     public void applyForce(Vector3 force) {
         if (force == null) {
@@ -140,48 +146,30 @@ public class Drone {
         Vector3 alpha = torque.scale(1.0 / inertia);
         this.alpha = this.alpha.add(alpha);
     }
-
+    public void resetAcceleration() {
+        this.acceleration = new Vector3(0, 0, 0);
+    }
     public void resetAngularAcceleration() {
         this.alpha = new Vector3(0, 0, 0);
-    }
-
-    private double maxSpeed = 20.0;
-
-    public void setMaxSpeed(double s) {
-        if (s <= 0)
-            throw new IllegalArgumentException("maxSpeed must be positive");
-        this.maxSpeed = s;
     }
 
     public void update(double dt) {
         if (dt <= 0)
             throw new IllegalArgumentException("dt must be positive");
-
-        // -------- translational integration --------
         this.velocity = this.velocity.add(this.acceleration.scale(dt));
 
-        // Clamp velocity
         if (this.velocity.magnitude() > maxSpeed) {
             this.velocity = this.velocity.normalize().scale(maxSpeed);
         }
-
         this.position = this.position.add(this.velocity.scale(dt));
         this.acceleration = new Vector3(0, 0, 0);
 
-        // -------- rotational integration (CEP requirement) --------
-        // ω = ω + ω̇ Δt
         this.omega = this.omega.add(this.alpha.scale(dt));
-
-        // R = R * Exp(ω Δt)
         Matrix3 dR = Matrix3.expSO3(this.omega.scale(dt));
         this.rotation = this.rotation.multiply(dR);
         this.rotation = this.rotation.orthonormalize();
 
         this.alpha = new Vector3(0, 0, 0);
-    }
-
-    public void resetAcceleration() {
-        this.acceleration = new Vector3(0, 0, 0);
     }
 
     public void display() {

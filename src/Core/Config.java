@@ -1,7 +1,5 @@
 package Core;
-
 import java.io.*;
-
 public class Config {
 
     public double dt;
@@ -42,14 +40,7 @@ public class Config {
     }
 
     public void loadFromFile(String fileName) {
-        // Try multiple possible paths
-        String[] possiblePaths = {
-                fileName, // CWD relative
-                "src/" + fileName, // Inside src (if running from root)
-                "../" + fileName, // Parent (if running from src/out)
-                "DroneSimulatorInJava/" + fileName // Absolute-ish fallback
-        };
-
+        String[] possiblePaths = {fileName, "src/" + fileName, "../" + fileName, "DroneSimulatorInJava/" + fileName};
         File fileToLoad = null;
         for (String path : possiblePaths) {
             File f = new File(path);
@@ -66,19 +57,15 @@ public class Config {
             for (String p : possiblePaths) {
                 System.err.println(" - " + new File(p).getAbsolutePath());
             }
-            // fallback to defaults or throw
             throw new RuntimeException("Config file not found: " + fileName);
         }
-
         try (BufferedReader br = new BufferedReader(new FileReader(fileToLoad))) {
-
             String line;
             while ((line = br.readLine()) != null) {
-
                 if (line.trim().isEmpty() || !line.contains("="))
                     continue;
 
-                String[] parts = line.split("=");
+                String[] parts = line.split("=" );
                 String key = parts[0].trim();
                 double value = Double.parseDouble(parts[1].trim());
 

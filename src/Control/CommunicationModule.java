@@ -25,40 +25,7 @@ public class CommunicationModule {
         this.lastMessage = "";
         this.random = new Random();
     }
-    public boolean canShareState(physics.Drone a, physics.Drone b) {
-        double dist = a.getPosition().distance(b.getPosition());
 
-        // distance constraint: ||pi - pj|| < R
-        if (dist >= commRange) return false;
-
-        attempts++;
-
-        // stochastic success: rand() > pLoss
-        boolean ok = Math.random() > pLoss;
-        if (ok) successes++;
-
-        return ok;
-    }
-    public void exchangeStates(List<Drone> drones) {
-
-        for (int i = 0; i < drones.size(); i++) {
-            for (int j = i + 1; j < drones.size(); j++) {
-                Drone a = drones.get(i);
-                Drone b = drones.get(j);
-                double dist = a.getPosition().distance(b.getPosition());
-                if (dist <= commRange) {
-                    attempts++;
-                    boolean ok = random.nextDouble() > pLoss;
-                    if (ok) {
-                        successes++;
-                        lastMessage = "COMM OK: " + a.getId() + " <-> " + b.getId() + " dist=" + dist;
-                    } else {
-                        lastMessage = "COMM LOST: " + a.getId() + " <-> " + b.getId() + " dist=" + dist;
-                    }
-                }
-            }
-        }
-    }
     public void setpLoss(double pLoss) {
         this.pLoss = pLoss;
     }
@@ -99,4 +66,36 @@ public class CommunicationModule {
         successes = 0;
         lastMessage = "";
     }
+    public boolean canShareState(Drone a, Drone b) {
+        double dist = a.getPosition().distance(b.getPosition());
+
+        if (dist >= commRange)
+            return false;
+
+        attempts++;
+        boolean ok = Math.random() > pLoss;//success rate
+        if (ok) successes++;
+        return ok;
+    }
+    public void exchangeStates(List<Drone> drones) {
+
+        for (int i = 0; i < drones.size(); i++) {
+            for (int j = i + 1; j < drones.size(); j++) {
+                Drone a = drones.get(i);
+                Drone b = drones.get(j);
+                double dist = a.getPosition().distance(b.getPosition());
+                if (dist <= commRange) {
+                    attempts++;
+                    boolean ok = random.nextDouble() > pLoss;
+                    if (ok) {
+                        successes++;
+                        lastMessage = "COMM OK: " + a.getId() + " <-> " + b.getId() + " dist=" + dist;
+                    } else {
+                        lastMessage = "COMM LOST: " + a.getId() + " <-> " + b.getId() + " dist=" + dist;
+                    }
+                }
+            }
+        }
+    }
+
 }

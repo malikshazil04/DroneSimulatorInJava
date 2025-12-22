@@ -8,15 +8,12 @@ public class Obstacle {
         if (position == null || radius <= 0) {
             throw new IllegalArgumentException("invalid obstacle");
         }
-
         this.position = position;
         this.radius = radius;
     }
-
     public Vector3 getPosition() {
         return position;
     }
-
     public double getRadius() {
         return radius;
     }

@@ -1,12 +1,12 @@
 package Core;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
-
 import Control.*;
 import physics.Drone;
 
-public class Simulator {
+public class Simulator implements Runnable {
 
     private double dt;
     private double totalTime;
@@ -16,8 +16,8 @@ public class Simulator {
     private FormationManager formationManager;
     private CollisionAvoidance collisionAvoidance;
     private CommunicationModule communication;
-    private boolean running = false;
-    private boolean paused = false;
+    private volatile boolean running = false;
+    private volatile boolean paused = false;
     private int currentStep = 0;
     private int totalSteps = 0;
     private Logger logger;
@@ -33,7 +33,7 @@ public class Simulator {
     private ObstacleManager obstacleManager;
     public List<Obstacle> obstacles;
 
-    public Simulator(Controller controller, Config config, java.io.File outputDir) {
+    public Simulator(Controller controller, Config config, File outputDir) {
 
         if (controller == null) {
             throw new IllegalArgumentException("controller cannot be null");
@@ -41,9 +41,7 @@ public class Simulator {
         if (config == null) {
             throw new IllegalArgumentException("config cannot be null");
         }
-
         this.config = config;
-
         this.dt = config.dt;
         this.totalTime = config.totalTime;
         this.gravity = config.gravity;
@@ -51,18 +49,15 @@ public class Simulator {
         this.drones = new ArrayList<>();
 
         this.controller = controller;
-
         this.formationManager = new FormationManager(
                 config.formationKPos,
                 config.formationKVel,
                 config.formationSpacing);
         this.formationManager.setCommRange(config.commRange);
-
         this.collisionAvoidance = new CollisionAvoidance(
                 config.collisionSafeDistance,
                 config.collisionStrength);
         this.communication = new CommunicationModule(config.commRange, config.pLoss);
-
         this.logger = new Logger(outputDir);
         this.csvExporter = new CSVExporter(logger.getDirectory());
         this.obstacleManager = new ObstacleManager(config.obstacleStrength);
@@ -156,7 +151,6 @@ public class Simulator {
             vy = -Math.abs(vy) * wallBounce;
             hit = true;
         }
-
         if (hit) {
             d.setPosition(new Vector3(x, y, z));
             d.setVelocity(new Vector3(vx, vy, vz));
@@ -195,6 +189,30 @@ public class Simulator {
 
     public Logger getLogger() {
         return logger;
+    }
+
+    public Config getConfig() {
+        return config;
+    }
+
+    public Controller getController() {
+        return controller;
+    }
+
+    public void setDt(double dt) {
+        if (dt <= 0)
+            throw new IllegalArgumentException("dt must be > 0");
+        this.dt = dt;
+        if (running)
+            totalSteps = (int) Math.ceil(totalTime / dt);
+    }
+
+    public void setTotalTime(double totalTime) {
+        if (totalTime <= 0)
+            throw new IllegalArgumentException("totalTime must be > 0");
+        this.totalTime = totalTime;
+        if (running)
+            totalSteps = (int) Math.ceil(totalTime / dt);
     }
 
     public int computeCollisionCount() {
@@ -249,20 +267,14 @@ public class Simulator {
         return (collisions * 100.0) / pairs;
     }
 
-    private boolean allReachedTargets() {
-        for (Drone d : drones) {
-            double dist = d.getPosition().distance(d.getTarget());
-            if (dist > targetTolerance)
-                return false;
-        }
-        return true;
-    }
-
     public void startSim() {
         if (dt <= 0)
             throw new IllegalStateException("dt must be > 0");
         if (totalTime <= 0)
             throw new IllegalStateException("totalTime must be > 0");
+
+        if (running)
+            return;
 
         running = true;
         paused = false;
@@ -273,6 +285,34 @@ public class Simulator {
 
         logger.log("Simulation started");
         logger.log("totalSteps=" + totalSteps + " dt=" + dt + " totalTime=" + totalTime);
+
+        Thread simThread = new Thread(this, "SimulationThread");
+        simThread.start();
+    }
+
+    @Override
+    public void run() {
+        long lastTime = System.currentTimeMillis();
+        long intervalMs = (long) (dt * 1000);
+
+        while (running) {
+            if (!paused) {
+                stepOnce();
+            }
+
+            long currentTime = System.currentTimeMillis();
+            long waitTime = intervalMs - (currentTime - lastTime);
+
+            if (waitTime > 0) {
+                try {
+                    Thread.sleep(waitTime);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+            lastTime = System.currentTimeMillis();
+        }
     }
 
     public void pauseSim() {
@@ -285,37 +325,12 @@ public class Simulator {
         logger.log("Simulation resumed");
     }
 
-    public Config getConfig() {
-        return config;
-    }
-
     public void stopSim() {
-
         if (running) {
             running = false;
             paused = false;
             finalizeSimulation();
         }
-    }
-
-    public Controller getController() {
-        return controller;
-    }
-
-    public void setDt(double dt) {
-        if (dt <= 0)
-            throw new IllegalArgumentException("dt must be > 0");
-        this.dt = dt;
-        if (running)
-            totalSteps = (int) Math.ceil(totalTime / dt);
-    }
-
-    public void setTotalTime(double totalTime) {
-        if (totalTime <= 0)
-            throw new IllegalArgumentException("totalTime must be > 0");
-        this.totalTime = totalTime;
-        if (running)
-            totalSteps = (int) Math.ceil(totalTime / dt);
     }
 
     public boolean isRunning() {
@@ -326,9 +341,17 @@ public class Simulator {
         return paused;
     }
 
+    private boolean formationEnabled = true;
+
+    public void setFormationEnabled(boolean enabled) {
+        this.formationEnabled = enabled;
+    }
+
+    public boolean isFormationEnabled() {
+        return formationEnabled;
+    }
+
     public void stepOnce() {
-        if (!running || paused)
-            return;
         if (currentStep >= totalSteps) {
             stopSim();
             return;
@@ -344,13 +367,16 @@ public class Simulator {
             d.resetAcceleration();
             Vector3 obsF = obstacleManager.computeObstacleForce(d, obstacles);
             d.applyForce(obsF);
+
             // collision avoidance
             Vector3 avoidF = collisionAvoidance.computeAvoidanceForce(d, drones);
             d.applyForce(avoidF);
 
             // formation
-            Vector3 formF = formationManager.computeFormationForce(d, drones);
-            d.applyForce(formF);
+            if (formationEnabled) {
+                Vector3 formF = formationManager.computeFormationForce(d, drones);
+                d.applyForce(formF);
+            }
 
             // aerodynamic drag
             Vector3 dragF = d.getVelocity().scale(-config.dragK);
@@ -371,7 +397,6 @@ public class Simulator {
             csvExporter.writeRow(currentStep, d, thrustBodyZ);
         }
 
-        // Increment elapsed time once per step, not per drone
         elapsedTime += dt;
         if (config.logEvery > 0 && currentStep % config.logEvery == 0) {
             logger.log("step " + currentStep);
